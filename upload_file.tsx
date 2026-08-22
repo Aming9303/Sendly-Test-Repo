@@ -6,6 +6,7 @@ export const IncorrectUpload = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isUploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -14,11 +15,16 @@ export const IncorrectUpload = () => {
   };
 
   const handleUpload = async () => {
+    if (isUploadingRef.current) {
+      return;
+    }
+
     if (!file) {
       setError('Please select a file before uploading');
       return;
     }
 
+    isUploadingRef.current = true;
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -46,6 +52,7 @@ export const IncorrectUpload = () => {
       setError(msg);
       console.error('Error:', err);
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
     }
   };
