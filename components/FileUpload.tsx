@@ -25,6 +25,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +88,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -94,6 +109,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -102,13 +118,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       setMessage('Upload successful!');
       onUploadSuccess?.();
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || controller.signal.aborted) {
+        return;
+      }
       const uploadError = err instanceof Error ? err.message : 'Upload failed.';
       setError(uploadError);
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
-      setIsUploading(false);
+      if (!controller.signal.aborted) {
+        setIsUploading(false);
+      }
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 

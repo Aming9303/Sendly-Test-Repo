@@ -21,3 +21,9 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
+
+test('FileUpload aborts on unmount and ignores AbortError', () => {
+  assert.match(source, /AbortController/);
+  assert.match(source, /signal:\s*controller\.signal/);
+  assert.match(source, /AbortError/);
+});

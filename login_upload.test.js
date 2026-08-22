@@ -20,3 +20,9 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
+
+test('Login upload aborts on unmount and ignores AbortError', () => {
+  assert.match(source, /AbortController/);
+  assert.match(source, /signal:\s*controller\.signal/);
+  assert.match(source, /AbortError/);
+});

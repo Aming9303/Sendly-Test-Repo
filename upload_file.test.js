@@ -14,3 +14,9 @@ test('upload sends the selected file with FormData instead of JSON', () => {
 test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
+
+test('upload aborts on unmount and ignores AbortError', () => {
+  assert.match(source, /AbortController/);
+  assert.match(source, /signal:\s*controller\.signal/);
+  assert.match(source, /AbortError/);
+});
