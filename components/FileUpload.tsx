@@ -74,8 +74,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
-    if (selectedFiles.length === 0) {
-      setError('Please select a file before uploading.');
+    if (selectedFiles.length === 0 || isUploading) {
+      if (selectedFiles.length === 0) {
+        setError('Please select a file before uploading.');
+      }
       return;
     }
 
@@ -110,7 +112,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     } finally {
       setIsUploading(false);
     }
-  }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+  }, [isUploading, multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      handleUpload();
+    },
+    [handleUpload],
+  );
 
   const handleRemove = useCallback(() => {
     setSelectedFiles([]);
@@ -133,7 +143,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [previews]);
 
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <input
         ref={inputRef}
         type="file"
@@ -163,12 +173,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
+            <button type="submit" disabled={isUploading}>
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
         </>
       )}
-    </div>
+    </form>
   );
 };
