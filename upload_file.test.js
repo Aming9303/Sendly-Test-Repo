@@ -14,3 +14,11 @@ test('upload sends the selected file with FormData instead of JSON', () => {
 test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
+
+test('upload maps friendly error messages for HTTP status codes, offline and network failures', () => {
+  assert.match(source, /response\.status\s*>=\s*400\s*&&\s*response\.status\s*<\s*500/);
+  assert.match(source, /response\.status\s*>=\s*500/);
+  assert.match(source, /navigator\.onLine/);
+  assert.match(source, /console\.error/);
+  assert.doesNotMatch(source, /Upload failed with status \$\{response\.status\}/);
+});
