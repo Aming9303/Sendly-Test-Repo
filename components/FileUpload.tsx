@@ -10,6 +10,26 @@ export interface FileUploadProps {
   onUploadError?: (message: string) => void;
 }
 
+export const isFileTypeAccepted = (file: File, accept?: string): boolean => {
+  if (!accept || !accept.trim()) return true;
+  const tokens = accept.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+  if (tokens.length === 0) return true;
+
+  const fileName = file.name.toLowerCase();
+  const fileType = (file.type || '').toLowerCase();
+
+  return tokens.some((token) => {
+    if (token.startsWith('.')) {
+      return fileName.endsWith(token);
+    }
+    if (token.endsWith('/*')) {
+      const typePrefix = token.slice(0, -2);
+      return fileType.startsWith(typePrefix + '/');
+    }
+    return fileType === token;
+  });
+};
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
   maxSizeMB = 5,
@@ -26,15 +46,28 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const clearSelection = useCallback(() => {
+    setSelectedFiles([]);
+    setPreviews([]);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, []);
+
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
       const validFiles: File[] = [];
-      const errors: string[] = [];
+      const invalidFileNames: string[] = [];
+      const maxBytes = maxSizeMB * 1024 * 1024;
 
       for (const file of files) {
-        if (file.size > maxSizeMB * 1024 * 1024) {
-          errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
+        if (!isFileTypeAccepted(file, accept)) {
+          invalidFileNames.push(`${file.name} (invalid type, allowed: ${accept})`);
+          continue;
+        }
+        if (file.size > maxBytes) {
+          invalidFileNames.push(`${file.name} (exceeds ${maxSizeMB}MB limit)`);
           continue;
         }
         validFiles.push(file);
@@ -43,16 +76,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       setMessage(null);
 
       if (validFiles.length === 0) {
-        setError(errors.length > 0 ? errors.join(' ') : 'No valid files selected.');
-        setSelectedFiles([]);
-        setPreviews([]);
-        if (inputRef.current) {
-          inputRef.current.value = '';
-        }
+        setError(invalidFileNames.length > 0 ? `Invalid files: ${invalidFileNames.join(', ')}` : 'No valid files selected.');
+        clearSelection();
         return;
       }
 
-      setError(errors.length > 0 ? errors.join(' ') : null);
+      setError(invalidFileNames.length > 0 ? `Invalid files: ${invalidFileNames.join(', ')}` : null);
       setSelectedFiles(validFiles);
 
       const newPreviews = validFiles.map((file) => {
@@ -65,7 +94,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onFilesSelected?.(validFiles);
     },
-    [maxSizeMB, onFilesSelected],
+    [accept, maxSizeMB, onFilesSelected, clearSelection],
   );
 
   const handleUpload = useCallback(async () => {
@@ -113,14 +142,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 
   const handleRemove = useCallback(() => {
-    setSelectedFiles([]);
-    setPreviews([]);
+    clearSelection();
     setError(null);
     setMessage(null);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, []);
+  }, [clearSelection]);
 
   useEffect(() => {
     return () => {

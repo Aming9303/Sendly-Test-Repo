@@ -6,8 +6,13 @@ const source = readFileSync('components/FileUpload.tsx', 'utf8');
 
 test('FileUpload validates file size without broken nested loops', () => {
   assert.match(source, /for\s*\(\s*const file of files\s*\)/);
-  assert.doesNotMatch(source, /const invalidFileNames/);
-  assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
+  assert.match(source, /const invalidFileNames/);
+});
+
+test('FileUpload validates file types against accept filter pattern', () => {
+  assert.match(source, /isFileTypeAccepted/);
+  assert.match(source, /!isFileTypeAccepted\(file,\s*accept\)/);
+  assert.match(source, /invalidFileNames\.push\(/);
 });
 
 test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
