@@ -1,5 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 
+export interface FileItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
 export interface FileUploadProps {
   accept?: string;
   maxSizeMB?: number;
@@ -19,8 +25,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
   onUploadError,
 }) => {
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,8 +49,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       if (validFiles.length === 0) {
         setError(errors.length > 0 ? errors.join(' ') : 'No valid files selected.');
+        selectedFiles.forEach((item) => {
+          if (item.previewUrl) {
+            URL.revokeObjectURL(item.previewUrl);
+          }
+        });
         setSelectedFiles([]);
-        setPreviews([]);
         if (inputRef.current) {
           inputRef.current.value = '';
         }
@@ -53,19 +62,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       }
 
       setError(errors.length > 0 ? errors.join(' ') : null);
-      setSelectedFiles(validFiles);
 
-      const newPreviews = validFiles.map((file) => {
-        if (file.type.startsWith('image/')) {
-          return URL.createObjectURL(file);
+      selectedFiles.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
         }
-        return '';
       });
-      setPreviews(newPreviews);
 
+      const newItems: FileItem[] = validFiles.map((file) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 9)}`,
+        file,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+      }));
+
+      setSelectedFiles(newItems);
       onFilesSelected?.(validFiles);
     },
-    [maxSizeMB, onFilesSelected],
+    [maxSizeMB, onFilesSelected, selectedFiles],
   );
 
   const handleUpload = useCallback(async () => {
@@ -87,8 +100,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const formData = new FormData();
       const fieldName = multiple ? 'files' : 'file';
 
-      for (const file of selectedFiles) {
-        formData.append(fieldName, file, file.name);
+      for (const item of selectedFiles) {
+        formData.append(fieldName, item.file, item.file.name);
       }
 
       const response = await fetch(uploadUrl, {
@@ -113,24 +126,46 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 
   const handleRemove = useCallback(() => {
+    selectedFiles.forEach((item) => {
+      if (item.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    });
     setSelectedFiles([]);
-    setPreviews([]);
     setError(null);
     setMessage(null);
     if (inputRef.current) {
       inputRef.current.value = '';
     }
-  }, []);
+  }, [selectedFiles]);
+
+  const handleRemoveFile = useCallback(
+    (idToRemove: string) => {
+      setSelectedFiles((prev) => {
+        const itemToRemove = prev.find((item) => item.id === idToRemove);
+        if (itemToRemove && itemToRemove.previewUrl) {
+          URL.revokeObjectURL(itemToRemove.previewUrl);
+        }
+        const updated = prev.filter((item) => item.id !== idToRemove);
+        if (updated.length === 0 && inputRef.current) {
+          inputRef.current.value = '';
+        }
+        onFilesSelected?.(updated.map((item) => item.file));
+        return updated;
+      });
+    },
+    [onFilesSelected],
+  );
 
   useEffect(() => {
     return () => {
-      previews.forEach((url) => {
-        if (url) {
-          URL.revokeObjectURL(url);
+      selectedFiles.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
         }
       });
     };
-  }, [previews]);
+  }, [selectedFiles]);
 
   return (
     <div>
@@ -147,20 +182,33 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         </p>
       )}
       {message && <p role="status">{message}</p>}
-      {previews.map((url, idx) =>
-        url ? (
-          <img
-            key={idx}
-            src={url}
-            alt="preview"
-            style={{ width: 100, height: 100, objectFit: 'cover' }}
-          />
-        ) : null,
-      )}
+      {selectedFiles.map((item) => (
+        <div key={item.id} style={{ display: 'inline-block', margin: 8 }}>
+          {item.previewUrl ? (
+            <img
+              src={item.previewUrl}
+              alt={item.file.name || 'preview'}
+              style={{ width: 100, height: 100, objectFit: 'cover', display: 'block' }}
+            />
+          ) : (
+            <div>{item.file.name}</div>
+          )}
+          {multiple && (
+            <button
+              type="button"
+              onClick={() => handleRemoveFile(item.id)}
+              disabled={isUploading}
+              aria-label={`Remove ${item.file.name}`}
+            >
+              Remove file
+            </button>
+          )}
+        </div>
+      ))}
       {selectedFiles.length > 0 && (
         <>
           <button type="button" onClick={handleRemove} disabled={isUploading}>
-            Remove
+            Remove all
           </button>
           {uploadUrl && (
             <button type="button" onClick={handleUpload} disabled={isUploading}>
