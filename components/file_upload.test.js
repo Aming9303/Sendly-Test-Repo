@@ -21,3 +21,12 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
+
+test('FileUpload has accessible labels and ARIA attributes for screen readers', () => {
+  assert.match(source, /<label\s+htmlFor=/);
+  assert.match(source, /aria-label=/);
+  assert.match(source, /aria-describedby=/);
+  assert.match(source, /id="file-upload-error"/);
+  assert.match(source, /id="file-upload-status"/);
+  assert.match(source, /aria-busy=\{isUploading\}/);
+});

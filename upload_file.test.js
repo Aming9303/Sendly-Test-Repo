@@ -14,3 +14,12 @@ test('upload sends the selected file with FormData instead of JSON', () => {
 test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
+
+test('upload has accessible label and ARIA attributes', () => {
+  assert.match(source, /<label\s+htmlFor=/);
+  assert.match(source, /aria-label=/);
+  assert.match(source, /aria-describedby=/);
+  assert.match(source, /id="upload-file-error"/);
+  assert.match(source, /id="upload-file-status"/);
+  assert.match(source, /aria-busy=\{isUploading\}/);
+});

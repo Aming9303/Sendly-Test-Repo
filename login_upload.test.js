@@ -20,3 +20,12 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
+
+test('Login upload has accessible label and ARIA attributes', () => {
+  assert.match(source, /<label\s+htmlFor=/);
+  assert.match(source, /aria-label=/);
+  assert.match(source, /aria-describedby=/);
+  assert.match(source, /id="login-file-error"/);
+  assert.match(source, /id="login-file-status"/);
+  assert.match(source, /aria-busy=\{isUploading\}/);
+});

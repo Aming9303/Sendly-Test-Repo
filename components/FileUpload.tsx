@@ -134,19 +134,32 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div>
+      <label htmlFor="file-upload-input">Choose file</label>
       <input
+        id="file-upload-input"
         ref={inputRef}
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-label="Choose file"
+        aria-describedby={[
+          error ? 'file-upload-error' : null,
+          message ? 'file-upload-status' : null,
+        ]
+          .filter(Boolean)
+          .join(' ') || undefined}
         onChange={handleFileChange}
       />
       {error && (
-        <p role="alert" style={{ color: 'red' }}>
+        <p id="file-upload-error" role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p id="file-upload-status" role="status">
+          {message}
+        </p>
+      )}
       {previews.map((url, idx) =>
         url ? (
           <img
@@ -163,7 +176,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading}
+              aria-busy={isUploading}
+            >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
