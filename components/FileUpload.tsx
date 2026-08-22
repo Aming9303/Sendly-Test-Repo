@@ -24,11 +24,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
+  const validateAndSetFiles = useCallback(
+    (files: File[]) => {
       const validFiles: File[] = [];
       const errors: string[] = [];
 
@@ -66,6 +66,40 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onFilesSelected?.(validFiles);
     },
     [maxSizeMB, onFilesSelected],
+  );
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files || []);
+      validateAndSetFiles(files);
+    },
+    [validateAndSetFiles],
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(false);
+
+      const files = Array.from(event.dataTransfer?.files || []);
+      if (files.length > 0) {
+        validateAndSetFiles(files);
+      }
+    },
+    [validateAndSetFiles],
   );
 
   const handleUpload = useCallback(async () => {
@@ -133,7 +167,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [previews]);
 
   return (
-    <div>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{
+        border: isDragging ? '2px dashed #0066cc' : '1px solid #ccc',
+        backgroundColor: isDragging ? '#f0f8ff' : 'transparent',
+        padding: '16px',
+        borderRadius: '4px',
+      }}
+    >
       <input
         ref={inputRef}
         type="file"
