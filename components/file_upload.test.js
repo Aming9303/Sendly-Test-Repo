@@ -5,9 +5,10 @@ const test = require('node:test');
 const source = readFileSync('components/FileUpload.tsx', 'utf8');
 
 test('FileUpload validates file size without broken nested loops', () => {
-  assert.match(source, /for\s*\(\s*const file of files\s*\)/);
-  assert.doesNotMatch(source, /const invalidFileNames/);
-  assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
+  assert.equal((source.match(/for\s*\(\s*const file of files\s*\)/g) || []).length, 1);
+  assert.match(source, /const validFiles: File\[\] = \[\]/);
+  assert.match(source, /const invalidFileNames: string\[\] = \[\]/);
+  assert.doesNotMatch(source, /const errors: string\[\] = \[\]/);
 });
 
 test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
