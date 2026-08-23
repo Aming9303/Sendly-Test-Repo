@@ -21,3 +21,13 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
+
+test('FileUpload maps HTTP and network failures to friendly messages', () => {
+  assert.match(source, /response\.status >= 400 && response\.status < 500/);
+  assert.match(source, /response\.status >= 500/);
+  assert.match(source, /navigator\.onLine === false/);
+  assert.match(source, /err instanceof TypeError/);
+  assert.match(source, /console\.error\('Upload request failed:'/);
+  assert.doesNotMatch(source, /Upload failed with status/);
+  assert.doesNotMatch(source, /setError\([^)]*err\.message/);
+});

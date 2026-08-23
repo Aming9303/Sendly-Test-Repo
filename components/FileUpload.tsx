@@ -97,16 +97,36 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
+        const userMessage =
+          response.status >= 400 && response.status < 500
+            ? 'We could not upload those files. Check them and try again.'
+            : response.status >= 500
+              ? 'The upload service is temporarily unavailable. Please try again later.'
+              : 'The upload could not be completed. Please try again.';
+
+        console.error('Upload request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+        });
+        setError(userMessage);
+        onUploadError?.(userMessage);
+        return;
       }
 
       setMessage('Upload successful!');
       onUploadSuccess?.();
     } catch (err) {
-      const uploadError = err instanceof Error ? err.message : 'Upload failed.';
-      setError(uploadError);
-      onUploadError?.(uploadError);
-      console.error('Upload error:', err);
+      console.error('Upload request failed:', err);
+
+      const isOffline =
+        typeof navigator !== 'undefined' && navigator.onLine === false;
+      const userMessage = isOffline
+        ? "You're offline. Check your internet connection and try again."
+        : err instanceof TypeError
+          ? 'We could not reach the upload service. Check your connection and try again.'
+          : 'Something went wrong while uploading. Please try again.';
+      setError(userMessage);
+      onUploadError?.(userMessage);
     } finally {
       setIsUploading(false);
     }

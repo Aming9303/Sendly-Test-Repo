@@ -20,3 +20,13 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
+
+test('Login maps HTTP and network failures to friendly messages', () => {
+  assert.match(source, /response\.status >= 400 && response\.status < 500/);
+  assert.match(source, /response\.status >= 500/);
+  assert.match(source, /navigator\.onLine === false/);
+  assert.match(source, /err instanceof TypeError/);
+  assert.match(source, /console\.error\("Upload request failed:"/);
+  assert.doesNotMatch(source, /Upload failed with status/);
+  assert.doesNotMatch(source, /setError\([^)]*err\.message/);
+});
