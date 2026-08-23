@@ -10,6 +10,32 @@ export interface FileUploadProps {
   onUploadError?: (message: string) => void;
 }
 
+export const isFileTypeAccepted = (file: File, acceptPattern: string): boolean => {
+  const acceptedTypes = acceptPattern
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (acceptedTypes.length === 0) {
+    return true;
+  }
+
+  const fileName = file.name.toLowerCase();
+  const mimeType = file.type.toLowerCase();
+
+  return acceptedTypes.some((acceptedType) => {
+    if (acceptedType.startsWith('.')) {
+      return fileName.endsWith(acceptedType);
+    }
+
+    if (acceptedType.endsWith('/*')) {
+      return mimeType.startsWith(acceptedType.slice(0, -1));
+    }
+
+    return mimeType === acceptedType;
+  });
+};
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
   maxSizeMB = 5,
@@ -37,6 +63,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
           continue;
         }
+
+        if (!isFileTypeAccepted(file, accept)) {
+          errors.push(
+            `File "${file.name}" is not an allowed type. Allowed types: ${accept}.`,
+          );
+          continue;
+        }
+
         validFiles.push(file);
       }
 
@@ -65,7 +99,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onFilesSelected?.(validFiles);
     },
-    [maxSizeMB, onFilesSelected],
+    [accept, maxSizeMB, onFilesSelected],
   );
 
   const handleUpload = useCallback(async () => {

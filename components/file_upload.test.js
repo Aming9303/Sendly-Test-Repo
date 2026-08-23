@@ -10,6 +10,14 @@ test('FileUpload validates file size without broken nested loops', () => {
   assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
 });
 
+test('FileUpload validates MIME and extension rules from accept', () => {
+  assert.match(source, /isFileTypeAccepted\(file, accept\)/);
+  assert.match(source, /acceptedType\.startsWith\('\.'\)/);
+  assert.match(source, /acceptedType\.endsWith\('\/\*'\)/);
+  assert.match(source, /mimeType === acceptedType/);
+  assert.match(source, /Allowed types: \$\{accept\}/);
+});
+
 test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
   assert.match(source, /new\s+FormData\s*\(/);
   assert.match(source, /\.append\(\s*fieldName/);
