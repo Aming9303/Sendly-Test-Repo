@@ -3,14 +3,25 @@ const { readFileSync } = require('node:fs');
 const test = require('node:test');
 
 const source = readFileSync('upload_file.tsx', 'utf8');
+const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
 
-test('upload sends the selected file with FormData instead of JSON', () => {
-  assert.match(source, /new\s+FormData\s*\(/);
-  assert.match(source, /\.append\(\s*['"]file['"]/);
-  assert.doesNotMatch(source, /JSON\.stringify/);
-  assert.doesNotMatch(source, /Content-Type['"]?\s*:\s*['"]application\/json/);
+test('upload_file consumes the shared multipart uploader', () => {
+  assert.match(source, /useFileUpload\s*\(/);
+  assert.match(hookSource, /new\s+FormData\s*\(/);
+  assert.match(hookSource, /\.append\(fieldName, file, file\.name\)/);
+  assert.doesNotMatch(hookSource, /JSON\.stringify/);
 });
 
-test('file change stores a single File from the FileList', () => {
-  assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
+test('upload_file is a thin wrapper around shared file selection state', () => {
+  assert.match(hookSource, /file: selectedFiles\[0\] \?\? null/);
+  assert.doesNotMatch(source, /\bfetch\s*\(/);
+  assert.doesNotMatch(source, /new\s+FormData\s*\(/);
+  assert.doesNotMatch(source, /useState/);
+});
+
+test('shared uploader aborts on unmount and ignores AbortError', () => {
+  assert.match(hookSource, /new AbortController\(\)/);
+  assert.match(hookSource, /signal: controller\.signal/);
+  assert.match(hookSource, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(hookSource, /uploadError\.name === 'AbortError'[\s\S]*return/);
 });
