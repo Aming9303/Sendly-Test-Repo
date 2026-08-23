@@ -122,6 +122,27 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, []);
 
+  // Per-file removal: only used in multiple mode
+  const handleRemoveFile = useCallback(
+    (index: number) => {
+      // Revoke object URL for the removed file preview
+      if (previews[index]) {
+        URL.revokeObjectURL(previews[index]);
+      }
+      setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+      setPreviews((prev) => {
+        const updated = prev.filter((_, i) => i !== index);
+        return updated;
+      });
+    },
+    [previews],
+  );
+
+  // Generate stable keys for files based on file identity (name + size + lastModified)
+  const fileKey = useCallback((file: File, index: number) => {
+    return `${file.name}-${file.size}-${file.lastModified}-${index}`;
+  }, []);
+
   useEffect(() => {
     return () => {
       previews.forEach((url) => {
@@ -147,16 +168,62 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         </p>
       )}
       {message && <p role="status">{message}</p>}
-      {previews.map((url, idx) =>
-        url ? (
-          <img
-            key={idx}
-            src={url}
-            alt="preview"
-            style={{ width: 100, height: 100, objectFit: 'cover' }}
-          />
-        ) : null,
-      )}
+      {previews.map((url, idx) => {
+        const key = fileKey(selectedFiles[idx], idx);
+        return (
+          <div key={key} style={{ display: 'inline-block', margin: '4px', position: 'relative' }}>
+            {url ? (
+              <img
+                src={url}
+                alt="preview"
+                style={{ width: 100, height: 100, objectFit: 'cover' }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 100,
+                  height: 100,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#f0f0f0',
+                  fontSize: 12,
+                  textAlign: 'center',
+                  padding: 4,
+                }}
+              >
+                {selectedFiles[idx]?.name}
+              </div>
+            )}
+            {multiple && (
+              <button
+                type="button"
+                onClick={() => handleRemoveFile(idx)}
+                disabled={isUploading}
+                aria-label={`Remove ${selectedFiles[idx]?.name || 'file'}`}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  background: 'rgba(255,0,0,0.7)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 20,
+                  height: 20,
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  lineHeight: '20px',
+                  textAlign: 'center',
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        );
+      })}
       {selectedFiles.length > 0 && (
         <>
           <button type="button" onClick={handleRemove} disabled={isUploading}>
