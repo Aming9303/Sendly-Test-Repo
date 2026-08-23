@@ -1,4 +1,22 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
+declare const process: { env: { NODE_ENV?: string } };
+
+const DEFAULT_MAX_SIZE_MB = 5;
+
+const normalizeMaxSizeMB = (value: number) => {
+  if (Number.isFinite(value) && value > 0) {
+    return value;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      `[FileUpload] Invalid maxSizeMB value ${String(value)}; falling back to ${DEFAULT_MAX_SIZE_MB}MB.`,
+    );
+  }
+
+  return DEFAULT_MAX_SIZE_MB;
+};
 
 export interface FileUploadProps {
   accept?: string;
@@ -12,13 +30,14 @@ export interface FileUploadProps {
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
-  maxSizeMB = 5,
+  maxSizeMB = DEFAULT_MAX_SIZE_MB,
   multiple = false,
   uploadUrl,
   onFilesSelected,
   onUploadSuccess,
   onUploadError,
 }) => {
+  const safeMaxSizeMB = useMemo(() => normalizeMaxSizeMB(maxSizeMB), [maxSizeMB]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +52,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const errors: string[] = [];
 
       for (const file of files) {
-        if (file.size > maxSizeMB * 1024 * 1024) {
-          errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
+        if (file.size > safeMaxSizeMB * 1024 * 1024) {
+          errors.push(`File "${file.name}" exceeds ${safeMaxSizeMB}MB limit.`);
           continue;
         }
         validFiles.push(file);
@@ -65,7 +84,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onFilesSelected?.(validFiles);
     },
-    [maxSizeMB, onFilesSelected],
+    [onFilesSelected, safeMaxSizeMB],
   );
 
   const handleUpload = useCallback(async () => {
