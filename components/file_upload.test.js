@@ -1,13 +1,12 @@
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const test = require('node:test');
+const { assertValidationContract } = require('./file_upload_contract.cjs');
 
 const source = readFileSync('components/FileUpload.tsx', 'utf8');
 
-test('FileUpload validates file size without broken nested loops', () => {
-  assert.match(source, /for\s*\(\s*const file of files\s*\)/);
-  assert.doesNotMatch(source, /const invalidFileNames/);
-  assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
+test('FileUpload follows the shared file validation contract', () => {
+  assertValidationContract(source);
 });
 
 test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
