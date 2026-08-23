@@ -25,6 +25,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +80,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
+    if (uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -108,9 +115,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
+      uploadInFlightRef.current = false;
       setIsUploading(false);
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (selectedFiles.length === 0 || uploadInFlightRef.current) {
+        return;
+      }
+
+      void handleUpload();
+    },
+    [handleUpload, selectedFiles.length],
+  );
 
   const handleRemove = useCallback(() => {
     setSelectedFiles([]);
@@ -133,7 +154,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [previews]);
 
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <input
         ref={inputRef}
         type="file"
@@ -163,12 +184,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
+            <button type="submit" disabled={isUploading}>
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
         </>
       )}
-    </div>
+    </form>
   );
 };
