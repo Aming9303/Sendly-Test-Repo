@@ -19,4 +19,10 @@ test('Login upload stores exactly one selected File in state', () => {
 test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
+  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
+  assert.match(
+    source,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });

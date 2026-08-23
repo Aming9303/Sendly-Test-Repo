@@ -20,4 +20,10 @@ test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
 test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
+  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
+  assert.match(
+    source,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
