@@ -25,6 +25,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +91,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -94,21 +110,37 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
         throw new Error(`Upload failed with status ${response.status}`);
       }
 
-      setMessage('Upload successful!');
-      onUploadSuccess?.();
+      if (isMountedRef.current) {
+        setMessage('Upload successful!');
+        onUploadSuccess?.();
+      }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const uploadError = err instanceof Error ? err.message : 'Upload failed.';
       setError(uploadError);
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
-      setIsUploading(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        if (isMountedRef.current) {
+          setIsUploading(false);
+        }
+      }
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 

@@ -14,3 +14,11 @@ test('upload sends the selected file with FormData instead of JSON', () => {
 test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
+
+test('upload aborts on unmount and treats AbortError as cancellation', () => {
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /signal: controller\.signal/);
+  assert.match(source, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(source, /err\.name === ["']AbortError["'][\s\S]*return/);
+  assert.match(source, /if \(isMountedRef\.current\)[\s\S]*setIsUploading\(false\)/);
+});

@@ -21,3 +21,11 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
+
+test('FileUpload cancels fetch on unmount without surfacing AbortError', () => {
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /signal: controller\.signal/);
+  assert.match(source, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(source, /err\.name === ["']AbortError["'][\s\S]*return/);
+  assert.match(source, /if \(isMountedRef\.current\)[\s\S]*setIsUploading\(false\)/);
+});
