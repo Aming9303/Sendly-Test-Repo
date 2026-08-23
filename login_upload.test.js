@@ -13,7 +13,27 @@ test('Login upload sends binary data as multipart FormData', () => {
 
 test('Login upload stores exactly one selected File in state', () => {
   assert.match(source, /useState<File \| null>\(null\)/);
-  assert.match(source, /setFile\(event\.target\.files\?\.\[0\] \?\? null\)/);
+  assert.match(source, /const selectedFile = event\.target\.files\?\.\[0\] \?\? null/);
+  assert.match(source, /setFile\(selectedFile\)/);
+});
+
+test('Login rejects files larger than the default 5 MB before upload', () => {
+  assert.match(source, /maxSizeMB\s*=\s*5/);
+  assert.match(
+    source,
+    /selectedFile\.size\s*>\s*maxSizeMB\s*\*\s*1024\s*\*\s*1024/,
+  );
+  assert.match(source, /The maximum size is \$\{maxSizeMB\} MB/);
+
+  const sizeGuard = source.indexOf('selectedFile.size > maxSizeMB * 1024 * 1024');
+  const fetchCall = source.indexOf('fetch(');
+  assert.ok(sizeGuard >= 0 && sizeGuard < fetchCall);
+
+  const rejectedSelection = source.slice(sizeGuard, source.indexOf('setFile(selectedFile)'));
+  assert.match(rejectedSelection, /setFile\(null\)/);
+  assert.match(rejectedSelection, /event\.target\.value = ""/);
+  assert.match(rejectedSelection, /return;/);
+  assert.doesNotMatch(rejectedSelection, /fetch\(/);
 });
 
 test('Login upload guards empty and in-flight submissions', () => {
