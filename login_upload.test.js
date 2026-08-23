@@ -20,3 +20,14 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
+
+test('Login upload uses a configurable endpoint and rejects empty configuration', () => {
+  assert.match(source, /uploadUrl\?: string/);
+  assert.match(source, /uploadUrl = getDefaultUploadUrl\(\)/);
+  assert.match(source, /SENDLY_UPLOAD_URL/);
+  assert.match(source, /const endpoint = uploadUrl\.trim\(\)/);
+  assert.match(source, /if \(!endpoint\)/);
+  assert.match(source, /Upload URL is not configured\./);
+  assert.match(source, /fetch\(endpoint/);
+  assert.doesNotMatch(source, /https:\/\/example\.com/);
+});
