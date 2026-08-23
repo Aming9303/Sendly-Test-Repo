@@ -50,14 +50,20 @@ export const IncorrectUpload = () => {
     }
   };
 
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!file || isUploading) return;
+    handleUpload();
+  };
+
   return (
-    <div>
+    <form onSubmit={handleFormSubmit}>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <button type="submit" disabled={!file || isUploading}>
         {isUploading ? "Uploading..." : "Upload"}
       </button>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}
-    </div>
+    </form>
   );
 };
