@@ -1,11 +1,17 @@
-import React, { useRef, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 
 export const IncorrectUpload = () => {
+  const inputId = useId();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = `${inputId}-error`;
+  const statusId = `${inputId}-status`;
+  const describedBy = [error ? errorId : null, message ? statusId : null]
+    .filter(Boolean)
+    .join(' ') || undefined;
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -52,12 +58,33 @@ export const IncorrectUpload = () => {
 
   return (
     <div>
-      <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <label htmlFor={inputId}>Select a file</label>
+      <input
+        id={inputId}
+        ref={inputRef}
+        type="file"
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
+        onChange={handleFileChange}
+      />
+      <button
+        type="button"
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        aria-busy={isUploading}
+      >
         {isUploading ? 'Uploading...' : 'Upload'}
       </button>
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert" style={{ color: 'red' }}>{error}</p>}
+      {message && (
+        <p id={statusId} role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p id={errorId} role="alert" style={{ color: 'red' }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 };

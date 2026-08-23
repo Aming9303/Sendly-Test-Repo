@@ -21,3 +21,17 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
+
+test('FileUpload input has a unique visible label and linked feedback regions', () => {
+  assert.match(source, /const inputId = useId\(\)/);
+  assert.match(source, /<label htmlFor=\{inputId\}>/);
+  assert.match(source, /id=\{inputId\}/);
+  assert.match(source, /aria-describedby=\{describedBy\}/);
+  assert.match(source, /<p id=\{statusId\} role="status">/);
+  assert.match(source, /<p id=\{errorId\} role="alert"/);
+});
+
+test('FileUpload button exposes its busy state with discernible text', () => {
+  assert.match(source, /aria-busy=\{isUploading\}/);
+  assert.match(source, /\{isUploading \? 'Uploading\.\.\.' : 'Upload'\}/);
+});

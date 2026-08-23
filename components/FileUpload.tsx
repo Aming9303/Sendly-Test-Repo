@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useId } from 'react';
 
 export interface FileUploadProps {
   accept?: string;
@@ -19,12 +19,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
   onUploadError,
 }) => {
+  const inputId = useId();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = `${inputId}-error`;
+  const statusId = `${inputId}-status`;
+  const describedBy = [error ? errorId : null, message ? statusId : null]
+    .filter(Boolean)
+    .join(' ') || undefined;
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,19 +140,27 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div>
+      <label htmlFor={inputId}>Select {multiple ? 'files' : 'a file'}</label>
       <input
+        id={inputId}
         ref={inputRef}
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
         onChange={handleFileChange}
       />
       {error && (
-        <p role="alert" style={{ color: 'red' }}>
+        <p id={errorId} role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p id={statusId} role="status">
+          {message}
+        </p>
+      )}
       {previews.map((url, idx) =>
         url ? (
           <img
@@ -163,7 +177,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading}
+              aria-busy={isUploading}
+            >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
