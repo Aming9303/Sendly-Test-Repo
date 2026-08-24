@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 
-export const IncorrectUpload = () => {
+export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -19,6 +19,11 @@ export const IncorrectUpload = () => {
       return;
     }
 
+    if (!uploadUrl) {
+      setError("Upload URL is not configured.");
+      return;
+    }
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -27,7 +32,7 @@ export const IncorrectUpload = () => {
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch("https://example.com", {
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
@@ -53,7 +58,7 @@ export const IncorrectUpload = () => {
   return (
     <div>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <button type="button" onClick={handleUpload} disabled={!file || isUploading || !uploadUrl}>
         {isUploading ? "Uploading..." : "Upload"}
       </button>
       {message && <p role="status">{message}</p>}
