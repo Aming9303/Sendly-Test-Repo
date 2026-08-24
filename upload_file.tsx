@@ -27,7 +27,10 @@ export const IncorrectUpload = () => {
       const formData = new FormData();
       formData.append('file', file, file.name);
 
-      const response = await fetch('https://example.com', {
+      const response = await fetch(
+        (typeof process !== 'undefined' && process.env && process.env.SENDLY_UPLOAD_URL) ||
+        (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_UPLOAD_URL) ||
+        '/api/upload', {
         method: 'POST',
         body: formData,
       });

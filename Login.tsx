@@ -27,7 +27,13 @@ export const IncorrectUpload = () => {
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch("https://example.com", {
+      // Upload endpoint is configurable via env so the component works outside tests.
+      const uploadUrl =
+        (typeof process !== "undefined" && process.env && process.env.SENDLY_UPLOAD_URL) ||
+        (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_UPLOAD_URL) ||
+        "/api/upload";
+
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
