@@ -27,6 +27,8 @@ test('FileUpload resets invalid-only selections so users can select the same fil
 test('FileUpload keeps image preview URL cleanup', () => {
   assert.match(source, /URL\.createObjectURL\(file\)/);
   assert.match(source, /URL\.revokeObjectURL\(url\)/);
+});
+
 test('FileUpload keeps one validation loop for selected files', () => {
   const loopMatches = source.match(/for \(const file of files\)/g) || [];
   assert.equal(loopMatches.length, 1);
