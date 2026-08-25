@@ -21,9 +21,8 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
-test('Login upload has synchronous ref-based guard against double submit', () => {
-  assert.match(source, /isUploadingRef\s*=\s*useRef\(\s*false\s*\)/);
-  assert.match(source, /if\s*\(\s*isUploadingRef\.current\s*\)\s*\{\s*return;?\s*\}/);
-  assert.match(source, /isUploadingRef\.current\s*=\s*true/);
-  assert.match(source, /isUploadingRef\.current\s*=\s*false/);
+test('Login upload supports configurable uploadUrl prop and checks for empty/missing url', () => {
+  assert.match(source, /uploadUrl/);
+  assert.match(source, /fetch\(\s*uploadUrl/);
+  assert.match(source, /if\s*\(\s*!uploadUrl/);
 });

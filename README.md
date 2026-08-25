@@ -10,10 +10,10 @@ Webhook integration repo for GitHub agent bounty workflows (Sendly).
 
 ## Bounty cases
 
-| Case | Description |
-|------|-------------|
-| **A** | Issue bounty escrow |
-| **B** | Review-to-earn |
+| Case | Description | Reward |
+|------|-------------|--------|
+| **A** | Issue bounty escrow | Test USDC on ARC Testnet |
+| **B** | Review-to-earn | Test USDC on ARC Testnet |
 
 ## Development
 
@@ -27,4 +27,4 @@ Runs component and upload tests (`upload_file.test.js`, `login_upload.test.js`, 
 
 1. Comment `/attempt` on the bounty issue you want to work on.
 2. Fork the repo and open a PR that references the issue (`Fixes #NN`).
-3. Include your Base payout address in the PR description when requested.
+3. After your PR is reviewed and merged, comment your **ARC Testnet EVM address** on the issue to claim the reward — all bounties pay **test USDC on ARC Testnet**.
