@@ -14,3 +14,10 @@ test('upload sends the selected file with FormData instead of JSON', () => {
 test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
+
+test('upload has synchronous ref-based guard against double submit', () => {
+  assert.match(source, /isUploadingRef\s*=\s*useRef\(\s*false\s*\)/);
+  assert.match(source, /if\s*\(\s*isUploadingRef\.current\s*\)\s*\{\s*return;?\s*\}/);
+  assert.match(source, /isUploadingRef\.current\s*=\s*true/);
+  assert.match(source, /isUploadingRef\.current\s*=\s*false/);
+});
