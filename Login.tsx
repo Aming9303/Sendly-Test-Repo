@@ -12,6 +12,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isUploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -30,6 +31,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       return;
     }
 
+    isUploadingRef.current = true;
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -57,6 +59,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       setError(message);
       console.error("Error:", err);
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
     }
   };
