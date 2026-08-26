@@ -6,7 +6,7 @@ const source = readFileSync('components/FileUpload.tsx', 'utf8');
 
 test('FileUpload validates file size without broken nested loops', () => {
   assert.match(source, /for\s*\(\s*const file of files\s*\)/);
-  assert.doesNotMatch(source, /for\s*\([^)]+\)\s*\{\s*const invalidFileNames/);
+  assert.doesNotMatch(source, /const invalidFileNames/);
   assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
 });
 

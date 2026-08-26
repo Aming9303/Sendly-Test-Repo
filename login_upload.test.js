@@ -13,7 +13,13 @@ test('Login upload sends binary data as multipart FormData', () => {
 
 test('Login upload stores exactly one selected File in state', () => {
   assert.match(source, /useState<File \| null>\(null\)/);
-  assert.match(source, /setFile\(event\.target\.files\?\.\[0\] \?\? null\)/);
+  assert.match(source, /selectedFile/);
+});
+
+test('Login upload validates file size against maxSizeMB limit', () => {
+  assert.match(source, /maxSizeMB\s*=\s*5/);
+  assert.match(source, /selectedFile\.size\s*>\s*maxSizeMB\s*\*\s*1024\s*\*\s*1024/);
+  assert.match(source, /exceeds\s*\$\{maxSizeMB\}MB\s*limit/);
 });
 
 test('Login upload guards empty and in-flight submissions', () => {

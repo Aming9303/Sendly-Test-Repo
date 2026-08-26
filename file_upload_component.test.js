@@ -18,6 +18,12 @@ test('FileUpload skips oversized files without passing them to onFilesSelected',
   assert.match(source, /onFilesSelected\?\.\(validFiles\)/);
 });
 
+test('FileUpload validates file types against accept filter pattern', () => {
+  assert.match(source, /isFileTypeAccepted/);
+  assert.match(source, /!isFileTypeAccepted\(file,\s*accept\)/);
+  assert.match(source, /invalidFileNames\.push\(/);
+});
+
 test('FileUpload resets invalid-only selections so users can select the same file again', () => {
   assert.match(source, /validFiles\.length === 0/);
   assert.match(source, /clearSelection\(\)/);
