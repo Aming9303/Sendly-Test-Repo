@@ -26,3 +26,9 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
+
+test('Login upload supports configurable uploadUrl prop and checks for empty/missing url', () => {
+  assert.match(source, /uploadUrl/);
+  assert.match(source, /fetch\(\s*uploadUrl/);
+  assert.match(source, /if\s*\(\s*!uploadUrl/);
+});

@@ -1,41 +1,37 @@
 import React, { useRef, useState } from "react";
 
 export interface IncorrectUploadProps {
-  maxSizeMB?: number;
+  uploadUrl?: string;
 }
 
 export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
-  maxSizeMB = 5,
+  uploadUrl = (typeof process !== "undefined" && process.env?.REACT_APP_UPLOAD_URL) || "https://example.com",
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isUploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0] ?? null;
+    setFile(event.target.files?.[0] ?? null);
     setMessage(null);
-
-    if (selectedFile && selectedFile.size > maxSizeMB * 1024 * 1024) {
-      setError(`File "${selectedFile.name}" exceeds ${maxSizeMB}MB limit.`);
-      setFile(null);
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
-      return;
-    }
-
     setError(null);
-    setFile(selectedFile);
   };
 
   const handleUpload = async () => {
+    if (!uploadUrl || uploadUrl.trim() === "") {
+      setError("Upload URL is not configured.");
+      return;
+    }
+
     if (!file) {
       setError("Please select a file before uploading.");
       return;
     }
 
+    isUploadingRef.current = true;
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -44,7 +40,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch("https://example.com", {
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
@@ -63,6 +59,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       setError(message);
       console.error("Error:", err);
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
     }
   };
