@@ -1,11 +1,18 @@
 import React, { useRef, useState } from "react";
 
-export const IncorrectUpload = () => {
+export interface IncorrectUploadProps {
+  uploadUrl?: string;
+}
+
+export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
+  uploadUrl = (typeof process !== "undefined" && process.env?.REACT_APP_UPLOAD_URL) || "https://example.com",
+}) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isUploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -14,11 +21,17 @@ export const IncorrectUpload = () => {
   };
 
   const handleUpload = async () => {
+    if (!uploadUrl || uploadUrl.trim() === "") {
+      setError("Upload URL is not configured.");
+      return;
+    }
+
     if (!file) {
       setError("Please select a file before uploading.");
       return;
     }
 
+    isUploadingRef.current = true;
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -27,7 +40,7 @@ export const IncorrectUpload = () => {
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch("https://example.com", {
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
@@ -46,6 +59,7 @@ export const IncorrectUpload = () => {
       setError(message);
       console.error("Error:", err);
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
     }
   };

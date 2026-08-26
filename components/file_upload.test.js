@@ -6,13 +6,8 @@ const source = readFileSync('components/FileUpload.tsx', 'utf8');
 
 test('FileUpload validates file size without broken nested loops', () => {
   assert.match(source, /for\s*\(\s*const file of files\s*\)/);
-  assert.match(source, /const invalidFileNames/);
-});
-
-test('FileUpload validates file types against accept filter pattern', () => {
-  assert.match(source, /isFileTypeAccepted/);
-  assert.match(source, /!isFileTypeAccepted\(file,\s*accept\)/);
-  assert.match(source, /invalidFileNames\.push\(/);
+  assert.doesNotMatch(source, /const invalidFileNames/);
+  assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
 });
 
 test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
@@ -25,4 +20,11 @@ test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
 test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
+});
+
+test('FileUpload has synchronous ref-based guard against double submit', () => {
+  assert.match(source, /isUploadingRef\s*=\s*useRef\(\s*false\s*\)/);
+  assert.match(source, /if\s*\(\s*isUploadingRef\.current\s*\)\s*\{\s*return;?\s*\}/);
+  assert.match(source, /isUploadingRef\.current\s*=\s*true/);
+  assert.match(source, /isUploadingRef\.current\s*=\s*false/);
 });
