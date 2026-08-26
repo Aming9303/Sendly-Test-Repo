@@ -2,17 +2,27 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const test = require('node:test');
 
-const source = readFileSync('upload_file.tsx', 'utf8');
+const uploadFileSource = readFileSync('upload_file.tsx', 'utf8');
+const loginSource = readFileSync('Login.tsx', 'utf8');
 
-test('upload sends the selected file with FormData instead of JSON', () => {
-  assert.match(source, /new\s+FormData\s*\(/);
-  assert.match(source, /\.append\(\s*['"]file['"]/);
-  assert.doesNotMatch(source, /JSON\.stringify/);
-  assert.doesNotMatch(source, /Content-Type['"]?\s*:\s*['"]application\/json/);
+test('upload_file.tsx consolidates and re-exports shared Login implementation', () => {
+  assert.match(uploadFileSource, /export\s+\{\s*IncorrectUpload\s*\}\s+from\s+['"]\.\/Login['"]/);
 });
 
-test('file change stores a single File from the FileList', () => {
-  assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
+test('consolidated source sends the selected file with FormData instead of JSON', () => {
+  assert.match(loginSource, /new\s+FormData\s*\(/);
+  assert.match(loginSource, /\.append\(\s*['"]file['"],\s*file,\s*file\.name\s*\)/);
+  assert.doesNotMatch(loginSource, /JSON\.stringify/);
+  assert.doesNotMatch(loginSource, /Content-Type['"]?\s*:\s*['"]application\/json/);
+});
+
+test('consolidated source stores a single File from the FileList', () => {
+  assert.match(loginSource, /setFile\(\s*event\.target\.files\??\.\[0\]\s*\?\?\s*null\)/);
+});
+
+test('no hardcoded endpoint remains in upload_file.tsx or Login.tsx', () => {
+  assert.doesNotMatch(uploadFileSource, /https?:\/\//);
+  assert.doesNotMatch(loginSource, /fetch\(\s*['"]https?:\/\//);
 });
 
 test('upload has synchronous ref-based guard against double submit', () => {
