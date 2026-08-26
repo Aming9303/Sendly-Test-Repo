@@ -1,17 +1,18 @@
 import React, { useRef, useState } from "react";
 
-export interface LoginProps {
+export interface IncorrectUploadProps {
   uploadUrl?: string;
 }
 
-export const IncorrectUpload: React.FC<LoginProps> = ({
-  uploadUrl = process.env?.REACT_APP_UPLOAD_URL || process.env?.NEXT_PUBLIC_UPLOAD_URL,
+export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
+  uploadUrl = (typeof process !== "undefined" && process.env?.REACT_APP_UPLOAD_URL) || "https://example.com",
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isUploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -20,16 +21,17 @@ export const IncorrectUpload: React.FC<LoginProps> = ({
   };
 
   const handleUpload = async () => {
+    if (!uploadUrl || uploadUrl.trim() === "") {
+      setError("Upload URL is not configured.");
+      return;
+    }
+
     if (!file) {
       setError("Please select a file before uploading.");
       return;
     }
 
-    if (!uploadUrl) {
-      setError("Upload URL is not configured.");
-      return;
-    }
-
+    isUploadingRef.current = true;
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -53,10 +55,11 @@ export const IncorrectUpload: React.FC<LoginProps> = ({
         inputRef.current.value = "";
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Upload failed.";
-      setError(msg);
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      setError(message);
       console.error("Error:", err);
     } finally {
+      isUploadingRef.current = false;
       setIsUploading(false);
     }
   };

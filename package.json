@@ -2,6 +2,6 @@
   "name": "sendly-test-repo",
   "private": true,
   "scripts": {
-    "test": "node --test upload_file.test.js login_upload.test.js components/file_upload.test.js"
+    "test": "node --test upload_file.test.js login_upload.test.js components/file_upload.test.js file_upload_component.test.js"
   }
 }

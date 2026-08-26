@@ -24,3 +24,10 @@ test('no hardcoded endpoint remains in upload_file.tsx or Login.tsx', () => {
   assert.doesNotMatch(uploadFileSource, /https?:\/\//);
   assert.doesNotMatch(loginSource, /fetch\(\s*['"]https?:\/\//);
 });
+
+test('upload has synchronous ref-based guard against double submit', () => {
+  assert.match(source, /isUploadingRef\s*=\s*useRef\(\s*false\s*\)/);
+  assert.match(source, /if\s*\(\s*isUploadingRef\.current\s*\)\s*\{\s*return;?\s*\}/);
+  assert.match(source, /isUploadingRef\.current\s*=\s*true/);
+  assert.match(source, /isUploadingRef\.current\s*=\s*false/);
+});
