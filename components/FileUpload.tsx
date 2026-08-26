@@ -10,6 +10,26 @@ export interface FileUploadProps {
   onUploadError?: (message: string) => void;
 }
 
+export const isFileTypeAccepted = (file: File, accept?: string): boolean => {
+  if (!accept || !accept.trim()) return true;
+  const tokens = accept.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+  if (tokens.length === 0) return true;
+
+  const fileName = file.name.toLowerCase();
+  const fileType = (file.type || '').toLowerCase();
+
+  return tokens.some((token) => {
+    if (token.startsWith('.')) {
+      return fileName.endsWith(token);
+    }
+    if (token.endsWith('/*')) {
+      const typePrefix = token.slice(0, -2);
+      return fileType.startsWith(typePrefix + '/');
+    }
+    return fileType === token;
+  });
+};
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
   maxSizeMB = 5,
@@ -32,6 +52,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setPreviews([]);
     setError(null);
     setMessage(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFiles([]);
+    setPreviews([]);
     if (inputRef.current) {
       inputRef.current.value = '';
     }
