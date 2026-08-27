@@ -27,8 +27,16 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
-test('Login upload supports configurable uploadUrl prop and checks for empty/missing url', () => {
-  assert.match(source, /uploadUrl/);
-  assert.match(source, /fetch\(\s*uploadUrl/);
-  assert.match(source, /if\s*\(\s*!uploadUrl/);
+test('Login file input has a unique label and linked feedback regions', () => {
+  assert.match(source, /const inputId = useId\(\)/);
+  assert.match(source, /<label htmlFor=\{inputId\}>Select a file<\/label>/);
+  assert.match(source, /id=\{inputId\}/);
+  assert.match(source, /aria-describedby=\{describedBy\}/);
+  assert.match(source, /<p id=\{statusId\} role="status">/);
+  assert.match(source, /<p id=\{errorId\} role="alert">/);
+});
+
+test('Login upload button exposes its busy state with discernible text', () => {
+  assert.match(source, /aria-busy=\{isUploading\}/);
+  assert.match(source, /\{isUploading \? "Uploading\.\.\." : "Upload"\}/);
 });

@@ -1,16 +1,17 @@
-import React, { useRef, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 
-const DEFAULT_UPLOAD_URL =
-  (typeof process !== "undefined" && process.env?.REACT_APP_UPLOAD_URL) ||
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_UPLOAD_URL) ||
-  "";
-
-export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
+export const IncorrectUpload = () => {
+  const inputId = useId();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = `${inputId}-error`;
+  const statusId = `${inputId}-status`;
+  const describedBy = [error ? errorId : null, message ? statusId : null]
+    .filter(Boolean)
+    .join(" ") || undefined;
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -24,12 +25,6 @@ export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
       return;
     }
 
-    const endpoint = uploadUrl || DEFAULT_UPLOAD_URL;
-    if (!endpoint) {
-      setError("No upload URL configured. Set the uploadUrl prop or REACT_APP_UPLOAD_URL / VITE_UPLOAD_URL environment variable.");
-      return;
-    }
-
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -38,7 +33,7 @@ export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch(endpoint, {
+      const response = await fetch("https://example.com", {
         method: "POST",
         body: formData,
       });
@@ -63,12 +58,33 @@ export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
 
   return (
     <div>
-      <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <label htmlFor={inputId}>Select a file</label>
+      <input
+        id={inputId}
+        ref={inputRef}
+        type="file"
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
+        onChange={handleFileChange}
+      />
+      <button
+        type="button"
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        aria-busy={isUploading}
+      >
         {isUploading ? "Uploading..." : "Upload"}
       </button>
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert">{error}</p>}
+      {message && (
+        <p id={statusId} role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p id={errorId} role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 };

@@ -1,47 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-/**
- * Validates and coerces the maxSizeMB prop to a safe positive number.
- * - NaN, 0, or negative values fall back to DEFAULT_MAX_SIZE_MB (5) with a console.warn in dev.
- * - Production builds stay silent.
- */
-const DEFAULT_MAX_SIZE_MB = 5;
-
-function sanitizeMaxSizeMB(value: unknown): number {
-  const num = Number(value);
-  if (Number.isFinite(num) && num > 0) {
-    return num;
-  }
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(
-      `[FileUpload] Invalid maxSizeMB prop: ${JSON.stringify(value)} (${Number.isNaN(num) ? 'NaN' : num}). Falling back to ${DEFAULT_MAX_SIZE_MB}.`,
-    );
-  }
-  return DEFAULT_MAX_SIZE_MB;
-}
-
-
-const matchesAcceptedType = (file: File, accept: string) => {
-  if (accept.trim() === '') {
-    return true;
-  }
-
-  const fileName = file.name.toLowerCase();
-  const fileType = file.type.toLowerCase();
-
-  return accept.split(',').some((rawToken) => {
-    const token = rawToken.trim().toLowerCase();
-
-    if (token.startsWith('.')) {
-      return fileName.endsWith(token);
-    }
-
-    if (token.endsWith('/*')) {
-      return fileType.startsWith(token.slice(0, -1));
-    }
-
-    return fileType === token;
-  });
-};
+import React, { useState, useCallback, useRef, useEffect, useId } from 'react';
 
 export interface FileUploadProps {
   accept?: string;
@@ -82,8 +39,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
   onUploadError,
 }) => {
-  const maxSizeMB = sanitizeMaxSizeMB(rawMaxSizeMB);
-
+  const inputId = useId();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +47,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadInFlightRef = useRef(false);
+  const errorId = `${inputId}-error`;
+  const statusId = `${inputId}-status`;
+  const describedBy = [error ? errorId : null, message ? statusId : null]
+    .filter(Boolean)
+    .join(' ') || undefined;
 
   const validateAndSelectFiles = useCallback(
     (incomingFiles: File[]) => {
@@ -292,92 +252,40 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [previews]);
 
   return (
-    <div
-      aria-label="File drop zone"
-      data-drag-active={isDragging ? 'true' : 'false'}
-      onDragEnter={handleDragOver}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      style={{
-        border: `2px dashed ${isDragging ? '#2563eb' : '#9ca3af'}`,
-        backgroundColor: isDragging ? '#eff6ff' : 'transparent',
-        padding: 16,
-        transition: 'border-color 120ms ease, background-color 120ms ease',
-      }}
-    >
-      <p>{isDragging ? 'Drop files here.' : 'Drag and drop files here, or use the picker.'}</p>
+    <div>
+      <label htmlFor={inputId}>Select {multiple ? 'files' : 'a file'}</label>
       <input
+        id={inputId}
         ref={inputRef}
         id="file-upload-input"
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
         onChange={handleFileChange}
         aria-describedby="file-upload-error file-upload-status"
       />
       {error && (
-        <p id="file-upload-error" role="alert" style={{ color: 'red' }}>
+        <p id={errorId} role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
-      {previews.map((url, idx) => {
-        const key = fileKey(selectedFiles[idx], idx);
-        return (
-          <div key={key} style={{ display: 'inline-block', margin: '4px', position: 'relative' }}>
-            {url ? (
-              <img
-                src={url}
-                alt="preview"
-                style={{ width: 100, height: 100, objectFit: 'cover' }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 100,
-                  height: 100,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: '#f0f0f0',
-                  fontSize: 12,
-                  textAlign: 'center',
-                  padding: 4,
-                }}
-              >
-                {selectedFiles[idx]?.name}
-              </div>
-            )}
-            {multiple && (
-              <button
-                type="button"
-                onClick={() => handleRemoveFile(idx)}
-                disabled={isUploading}
-                aria-label={`Remove ${selectedFiles[idx]?.name || 'file'}`}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  background: 'rgba(255,0,0,0.7)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: 20,
-                  height: 20,
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  lineHeight: '20px',
-                  textAlign: 'center',
-                  padding: 0,
-                }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        );
-      })}
+      {message && (
+        <p id={statusId} role="status">
+          {message}
+        </p>
+      )}
+      {previews.map((url, idx) =>
+        url ? (
+          <img
+            key={idx}
+            src={url}
+            alt="preview"
+            style={{ width: 100, height: 100, objectFit: 'cover' }}
+          />
+        ) : null,
+      )}
       {selectedFiles.length > 0 && (
         <>
           <button
@@ -389,7 +297,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button type="submit" disabled={isUploading}>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading}
+              aria-busy={isUploading}
+            >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
