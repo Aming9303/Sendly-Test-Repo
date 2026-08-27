@@ -20,6 +20,29 @@ function sanitizeMaxSizeMB(value: unknown): number {
 }
 
 
+const matchesAcceptedType = (file: File, accept: string) => {
+  if (accept.trim() === '') {
+    return true;
+  }
+
+  const fileName = file.name.toLowerCase();
+  const fileType = file.type.toLowerCase();
+
+  return accept.split(',').some((rawToken) => {
+    const token = rawToken.trim().toLowerCase();
+
+    if (token.startsWith('.')) {
+      return fileName.endsWith(token);
+    }
+
+    if (token.endsWith('/*')) {
+      return fileType.startsWith(token.slice(0, -1));
+    }
+
+    return fileType === token;
+  });
+};
+
 export interface FileUploadProps {
   accept?: string;
   maxSizeMB?: number;
@@ -65,22 +88,32 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlightRef = useRef(false);
 
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
-      const maxBytes = maxSizeMB * 1024 * 1024;
+  const validateAndSelectFiles = useCallback(
+    (incomingFiles: File[]) => {
+      const files = multiple ? incomingFiles : incomingFiles.slice(0, 1);
       const validFiles: File[] = [];
       const invalidFileNames: string[] = [];
+
+      if (!multiple && incomingFiles.length > 1) {
+        errors.push('Only one file can be selected.');
+      }
 
       for (const file of files) {
         if (file.size > maxBytes) {
           invalidFileNames.push(file.name);
           continue;
         }
+
+        if (!matchesAcceptedType(file, accept)) {
+          errors.push(`File "${file.name}" is not an accepted file type.`);
+          continue;
+        }
+
         validFiles.push(file);
       }
 
@@ -117,7 +150,42 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onFilesSelected?.(validFiles);
     },
-    [clearSelection, maxSizeMB, onFilesSelected],
+    [accept, maxSizeMB, multiple, onFilesSelected],
+  );
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      validateAndSelectFiles(Array.from(event.target.files || []));
+    },
+    [validateAndSelectFiles],
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(false);
+      validateAndSelectFiles(Array.from(event.dataTransfer.files || []));
+    },
+    [validateAndSelectFiles],
   );
 
   const handleUpload = useCallback(async () => {
@@ -224,7 +292,21 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [previews]);
 
   return (
-    <form onSubmit={handleSubmit}>
+    <div
+      aria-label="File drop zone"
+      data-drag-active={isDragging ? 'true' : 'false'}
+      onDragEnter={handleDragOver}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{
+        border: `2px dashed ${isDragging ? '#2563eb' : '#9ca3af'}`,
+        backgroundColor: isDragging ? '#eff6ff' : 'transparent',
+        padding: 16,
+        transition: 'border-color 120ms ease, background-color 120ms ease',
+      }}
+    >
+      <p>{isDragging ? 'Drop files here.' : 'Drag and drop files here, or use the picker.'}</p>
       <input
         ref={inputRef}
         id="file-upload-input"

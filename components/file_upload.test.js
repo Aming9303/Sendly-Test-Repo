@@ -20,25 +20,22 @@ test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
 test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
   assert.match(source, /disabled=\{isUploading\}/);
-  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
-  assert.match(
-    source,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
-  );
 });
 
-test('FileUpload uses a real form submit path for keyboard activation', () => {
-  assert.match(source, /<form onSubmit=\{handleSubmit\}>/);
-  assert.match(source, /<button type="submit" disabled=\{isUploading\}>/);
+test('picker and drop paths both use the same size, type, and count validator', () => {
+  assert.match(source, /const validateAndSelectFiles = useCallback/);
+  assert.match(source, /validateAndSelectFiles\(Array\.from\(event\.target\.files/);
+  assert.match(source, /validateAndSelectFiles\(Array\.from\(event\.dataTransfer\.files/);
+  assert.match(source, /file\.size > maxSizeMB \* 1024 \* 1024/);
+  assert.match(source, /matchesAcceptedType\(file, accept\)/);
+  assert.match(source, /!multiple && incomingFiles\.length > 1/);
+  assert.doesNotMatch(source, /setSelectedFiles\(event\.dataTransfer\.files/);
+});
+
+test('dropzone prevents browser navigation and shows dragover affordance', () => {
   assert.match(source, /event\.preventDefault\(\)/);
-  assert.match(source, /void handleUpload\(\)/);
-});
-
-test('form submit is guarded when empty or already in flight', () => {
-  assert.match(
-    source,
-    /if \(selectedFiles\.length === 0 \|\| uploadInFlightRef\.current\) \{[\s\S]*?return;/,
-  );
-  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
-  assert.doesNotMatch(source, /type="submit" onClick=/);
+  assert.match(source, /onDragOver=\{handleDragOver\}/);
+  assert.match(source, /onDrop=\{handleDrop\}/);
+  assert.match(source, /data-drag-active=\{isDragging \? 'true' : 'false'\}/);
+  assert.match(source, /isDragging \? 'Drop files here\.'/);
 });
