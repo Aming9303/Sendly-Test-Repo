@@ -6,6 +6,7 @@ export const IncorrectUpload = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -18,6 +19,10 @@ export const IncorrectUpload = () => {
       setError('Please select a file before uploading');
       return;
     }
+
+    // Synchronous ref guard prevents re-entry before state flush
+    if (uploadingRef.current) return;
+    uploadingRef.current = true;
 
     setIsUploading(true);
     setMessage(null);
@@ -49,6 +54,7 @@ export const IncorrectUpload = () => {
       setError(msg);
       console.error('Error:', err);
     } finally {
+      uploadingRef.current = false;
       setIsUploading(false);
     }
   };
@@ -56,7 +62,7 @@ export const IncorrectUpload = () => {
   return (
     <div>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <button type="button" onClick={handleUpload} disabled={!file || isUploading || uploadingRef.current}>
         {isUploading ? 'Uploading...' : 'Upload'}
       </button>
       {message && <p role="status">{message}</p>}

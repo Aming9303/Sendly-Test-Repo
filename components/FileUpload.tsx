@@ -67,17 +67,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isUploadingRef = useRef(false);
-
-  const clearSelection = useCallback(() => {
-    setSelectedFiles([]);
-    setPreviews([]);
-    setError(null);
-    setMessage(null);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, []);
+  const uploadingRef = useRef(false);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,7 +135,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
-    isUploadingRef.current = true;
+    // Synchronous ref guard prevents re-entry before state flush
+    if (uploadingRef.current) return;
+    uploadingRef.current = true;
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -175,7 +168,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
-      isUploadingRef.current = false;
+      uploadingRef.current = false;
       setIsUploading(false);
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
@@ -237,13 +230,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button
-              type="button"
-              onClick={handleUpload}
-              disabled={isUploading}
-              aria-busy={isUploading}
-              aria-describedby="file-upload-status"
-            >
+            <button type="button" onClick={handleUpload} disabled={isUploading || uploadingRef.current}>
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
