@@ -1,6 +1,11 @@
 import React, { useRef, useState } from "react";
 
-export const IncorrectUpload = () => {
+const DEFAULT_UPLOAD_URL =
+  (typeof process !== "undefined" && process.env?.REACT_APP_UPLOAD_URL) ||
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_UPLOAD_URL) ||
+  "";
+
+export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -19,6 +24,12 @@ export const IncorrectUpload = () => {
       return;
     }
 
+    const endpoint = uploadUrl || DEFAULT_UPLOAD_URL;
+    if (!endpoint) {
+      setError("No upload URL configured. Set the uploadUrl prop or REACT_APP_UPLOAD_URL / VITE_UPLOAD_URL environment variable.");
+      return;
+    }
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -27,7 +38,7 @@ export const IncorrectUpload = () => {
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch("https://example.com", {
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
@@ -50,20 +61,14 @@ export const IncorrectUpload = () => {
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!file || isUploading) return;
-    handleUpload();
-  };
-
   return (
-    <form onSubmit={handleFormSubmit}>
+    <div>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="submit" disabled={!file || isUploading}>
+      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
         {isUploading ? "Uploading..." : "Upload"}
       </button>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}
-    </form>
+    </div>
   );
 };
