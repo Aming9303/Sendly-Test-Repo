@@ -1,4 +1,24 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+/**
+ * Validates and coerces the maxSizeMB prop to a safe positive number.
+ * - NaN, 0, or negative values fall back to DEFAULT_MAX_SIZE_MB (5) with a console.warn in dev.
+ * - Production builds stay silent.
+ */
+const DEFAULT_MAX_SIZE_MB = 5;
+
+function sanitizeMaxSizeMB(value: unknown): number {
+  const num = Number(value);
+  if (Number.isFinite(num) && num > 0) {
+    return num;
+  }
+  if (process.env.NODE_ENV === 'development') {
+    console.warn(
+      `[FileUpload] Invalid maxSizeMB prop: ${JSON.stringify(value)} (${Number.isNaN(num) ? 'NaN' : num}). Falling back to ${DEFAULT_MAX_SIZE_MB}.`,
+    );
+  }
+  return DEFAULT_MAX_SIZE_MB;
+}
+
 
 export interface FileUploadProps {
   accept?: string;
@@ -32,13 +52,15 @@ export const isFileTypeAccepted = (file: File, accept?: string): boolean => {
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
-  maxSizeMB = 5,
+  maxSizeMB: rawMaxSizeMB = DEFAULT_MAX_SIZE_MB,
   multiple = false,
   uploadUrl,
   onFilesSelected,
   onUploadSuccess,
   onUploadError,
 }) => {
+  const maxSizeMB = sanitizeMaxSizeMB(rawMaxSizeMB);
+
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
