@@ -25,6 +25,7 @@ Runs component and upload tests (`upload_file.test.js`, `login_upload.test.js`, 
 
 ## Contributing
 
-1. Comment `/attempt` on the bounty issue you want to work on.
-2. Fork the repo and open a PR that references the issue (`Fixes #NN`).
-3. After your PR is reviewed and merged, comment your **ARC Testnet EVM address** on the issue to claim the reward — all bounties pay **test USDC on ARC Testnet**.
+1. Comment `/attempt #NN` on the bounty issue before starting work.
+2. Fork the repository and open a PR that references the issue (`Fixes #NN`).
+3. After the PR is reviewed and merged, comment your ARC Testnet EVM address on
+   the issue. The bounty is paid in test USDC on ARC Testnet.
