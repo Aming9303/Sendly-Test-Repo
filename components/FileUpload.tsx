@@ -1,22 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-
-declare const process: { env: { NODE_ENV?: string } };
-
-const DEFAULT_MAX_SIZE_MB = 5;
-
-const normalizeMaxSizeMB = (value: number) => {
-  if (Number.isFinite(value) && value > 0) {
-    return value;
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `[FileUpload] Invalid maxSizeMB value ${String(value)}; falling back to ${DEFAULT_MAX_SIZE_MB}MB.`,
-    );
-  }
-
-  return DEFAULT_MAX_SIZE_MB;
-};
+import React from 'react';
+import { useFileUpload } from '../lib/useFileUpload';
 
 export interface FileUploadProps {
   accept?: string;
@@ -57,202 +40,25 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
   onUploadError,
 }) => {
-  const safeMaxSizeMB = useMemo(() => normalizeMaxSizeMB(maxSizeMB), [maxSizeMB]);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const errorId = `${inputId}-error`;
-  const statusId = `${inputId}-status`;
-  const describedBy = [error ? errorId : null, message ? statusId : null]
-    .filter(Boolean)
-    .join(' ') || undefined;
-
-  const validateAndSelectFiles = useCallback(
-    (incomingFiles: File[]) => {
-      const files = multiple ? incomingFiles : incomingFiles.slice(0, 1);
-      const validFiles: File[] = [];
-      const invalidFileNames: string[] = [];
-
-      if (!multiple && incomingFiles.length > 1) {
-        errors.push('Only one file can be selected.');
-      }
-
-      for (const file of files) {
-        if (file.size > safeMaxSizeMB * 1024 * 1024) {
-          errors.push(`File "${file.name}" exceeds ${safeMaxSizeMB}MB limit.`);
-          continue;
-        }
-
-        if (!matchesAcceptedType(file, accept)) {
-          errors.push(`File "${file.name}" is not an accepted file type.`);
-          continue;
-        }
-
-        validFiles.push(file);
-      }
-
-      setMessage(null);
-
-      if (validFiles.length === 0) {
-        setError(
-          invalidFileNames.length > 0
-            ? `File${invalidFileNames.length > 1 ? 's' : ''} "${invalidFileNames.join(', ')}" exceed${
-                invalidFileNames.length > 1 ? '' : 's'
-              } ${maxSizeMB}MB limit.`
-            : 'No valid files selected.'
-        );
-        clearSelection();
-        return;
-      }
-
-      setError(
-        invalidFileNames.length > 0
-          ? `Skipped file${invalidFileNames.length > 1 ? 's' : ''} "${invalidFileNames.join(', ')}" because ${
-              invalidFileNames.length > 1 ? 'they exceed' : 'it exceeds'
-            } the ${maxSizeMB}MB limit.`
-          : null
-      );
-      setSelectedFiles(validFiles);
-
-      const newPreviews = validFiles.map((file) => {
-        if (file.type.startsWith('image/')) {
-          return URL.createObjectURL(file);
-        }
-        return '';
-      });
-      setPreviews(newPreviews);
-
-      onFilesSelected?.(validFiles);
-    },
-    [onFilesSelected, safeMaxSizeMB],
-  );
-
-  const handleUpload = useCallback(async () => {
-    if (isUploadingRef.current) {
-      return;
-    }
-
-    if (!uploadUrl) {
-      setError('Upload URL is not configured.');
-      return;
-    }
-
-    if (selectedFiles.length === 0) {
-      setError('Please select a file before uploading.');
-      return;
-    }
-
-    if (uploadInFlightRef.current) {
-      return;
-    }
-
-    uploadInFlightRef.current = true;
-
-    setIsUploading(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      const fieldName = multiple ? 'files' : 'file';
-
-      for (const file of selectedFiles) {
-        formData.append(fieldName, file, file.name);
-      }
-
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const userMessage =
-          response.status >= 400 && response.status < 500
-            ? 'We could not upload those files. Check them and try again.'
-            : response.status >= 500
-              ? 'The upload service is temporarily unavailable. Please try again later.'
-              : 'The upload could not be completed. Please try again.';
-
-        console.error('Upload request failed:', {
-          status: response.status,
-          statusText: response.statusText,
-        });
-        setError(userMessage);
-        onUploadError?.(userMessage);
-        return;
-      }
-
-      setMessage('Upload successful!');
-      onUploadSuccess?.();
-    } catch (err) {
-      console.error('Upload request failed:', err);
-
-      const isOffline =
-        typeof navigator !== 'undefined' && navigator.onLine === false;
-      const userMessage = isOffline
-        ? "You're offline. Check your internet connection and try again."
-        : err instanceof TypeError
-          ? 'We could not reach the upload service. Check your connection and try again.'
-          : 'Something went wrong while uploading. Please try again.';
-      setError(userMessage);
-      onUploadError?.(userMessage);
-    } finally {
-      uploadInFlightRef.current = false;
-      setIsUploading(false);
-    }
-  }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
-
-  const handleSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-
-      if (selectedFiles.length === 0 || uploadInFlightRef.current) {
-        return;
-      }
-
-      void handleUpload();
-    },
-    [handleUpload, selectedFiles.length],
-  );
-
-  const handleRemove = useCallback(() => {
-    clearSelection();
-  }, [clearSelection]);
-
-  // Per-file removal: only used in multiple mode
-  const handleRemoveFile = useCallback(
-    (index: number) => {
-      // Revoke object URL for the removed file preview
-      if (previews[index]) {
-        URL.revokeObjectURL(previews[index]);
-      }
-      setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-      setPreviews((prev) => {
-        const updated = prev.filter((_, i) => i !== index);
-        return updated;
-      });
-    },
-    [previews],
-  );
-
-  // Generate stable keys for files based on file identity (name + size + lastModified)
-  const fileKey = useCallback((file: File, index: number) => {
-    return `${file.name}-${file.size}-${file.lastModified}-${index}`;
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      previews.forEach((url) => {
-        if (url) {
-          URL.revokeObjectURL(url);
-        }
-      });
-    };
-  }, [previews]);
+  const {
+    selectedFiles,
+    previews,
+    error,
+    isUploading,
+    message,
+    inputRef,
+    handleFileChange,
+    handleUpload,
+    handleRemove,
+  } = useFileUpload({
+    accept,
+    maxSizeMB,
+    multiple,
+    uploadUrl,
+    onFilesSelected,
+    onUploadSuccess,
+    onUploadError,
+  });
 
   return (
     <div>
