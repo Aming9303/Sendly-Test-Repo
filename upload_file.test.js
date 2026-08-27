@@ -39,3 +39,12 @@ test('consolidated upload source has no hardcoded endpoint', () => {
   assert.doesNotMatch(source, /fetch\(\s*['"]https?:\/\//);
   assert.match(source, /fetch\(endpoint/);
 });
+
+test('upload handler uses a synchronous ref guard against re-entry', () => {
+  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
+  assert.match(
+    source,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+});

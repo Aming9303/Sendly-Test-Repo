@@ -37,22 +37,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectedFilesRef = useRef<SelectedFile[]>([]);
-  const nextFileId = useRef(0);
-
-  const replaceSelectedFiles = useCallback((nextFiles: SelectedFile[]) => {
-    selectedFilesRef.current.forEach(revokePreview);
-    selectedFilesRef.current = nextFiles;
-    setSelectedFiles(nextFiles);
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    setSelectedFiles([]);
-    setPreviews([]);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, []);
+  const uploadInFlightRef = useRef(false);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +107,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
+    if (uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -151,6 +142,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
+      uploadInFlightRef.current = false;
       setIsUploading(false);
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);

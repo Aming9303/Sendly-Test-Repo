@@ -27,6 +27,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -35,17 +36,16 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   };
 
   const handleUpload = async () => {
-    const endpoint = uploadUrl.trim();
-
-    if (!endpoint) {
-      setError("Upload URL is not configured.");
-      return;
-    }
-
     if (!file) {
       setError("Please select a file before uploading.");
       return;
     }
+
+    if (uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
 
     setIsUploading(true);
     setMessage(null);
@@ -74,6 +74,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       setError(message);
       console.error("Error:", err);
     } finally {
+      uploadInFlightRef.current = false;
       setIsUploading(false);
     }
   };

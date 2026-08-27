@@ -41,6 +41,12 @@ test('Login rejects files larger than the default 5 MB before upload', () => {
 test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
+  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
+  assert.match(
+    source,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
 
 test('Login upload uses a configurable endpoint and rejects empty configuration', () => {
