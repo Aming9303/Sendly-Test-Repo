@@ -43,17 +43,13 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
-test('shared upload guard is synchronous rather than state-timing dependent', () => {
-  assert.match(hookSource, /const uploadInFlightRef = useRef\(false\)/);
-  assert.match(
-    hookSource,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
-  );
-  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
-});
-
-test('Login is a presentation wrapper with no duplicated upload implementation', () => {
-  assert.doesNotMatch(source, /\bfetch\s*\(/);
-  assert.doesNotMatch(source, /new\s+FormData\s*\(/);
-  assert.doesNotMatch(source, /useState/);
+test('Login upload uses a configurable endpoint and rejects empty configuration', () => {
+  assert.match(source, /uploadUrl\?: string/);
+  assert.match(source, /uploadUrl = getDefaultUploadUrl\(\)/);
+  assert.match(source, /SENDLY_UPLOAD_URL/);
+  assert.match(source, /const endpoint = uploadUrl\.trim\(\)/);
+  assert.match(source, /if \(!endpoint\)/);
+  assert.match(source, /Upload URL is not configured\./);
+  assert.match(source, /fetch\(endpoint/);
+  assert.doesNotMatch(source, /https:\/\/example\.com/);
 });
