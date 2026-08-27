@@ -1,4 +1,22 @@
-import React, { useState, useCallback, useRef, useEffect, useId } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
+declare const process: { env: { NODE_ENV?: string } };
+
+const DEFAULT_MAX_SIZE_MB = 5;
+
+const normalizeMaxSizeMB = (value: number) => {
+  if (Number.isFinite(value) && value > 0) {
+    return value;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      `[FileUpload] Invalid maxSizeMB value ${String(value)}; falling back to ${DEFAULT_MAX_SIZE_MB}MB.`,
+    );
+  }
+
+  return DEFAULT_MAX_SIZE_MB;
+};
 
 export interface FileUploadProps {
   accept?: string;
@@ -32,14 +50,14 @@ export const isFileTypeAccepted = (file: File, accept?: string): boolean => {
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
-  maxSizeMB: rawMaxSizeMB = DEFAULT_MAX_SIZE_MB,
+  maxSizeMB = DEFAULT_MAX_SIZE_MB,
   multiple = false,
   uploadUrl,
   onFilesSelected,
   onUploadSuccess,
   onUploadError,
 }) => {
-  const inputId = useId();
+  const safeMaxSizeMB = useMemo(() => normalizeMaxSizeMB(maxSizeMB), [maxSizeMB]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +82,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       }
 
       for (const file of files) {
-        if (file.size > maxBytes) {
-          invalidFileNames.push(file.name);
+        if (file.size > safeMaxSizeMB * 1024 * 1024) {
+          errors.push(`File "${file.name}" exceeds ${safeMaxSizeMB}MB limit.`);
           continue;
         }
 
@@ -110,42 +128,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onFilesSelected?.(validFiles);
     },
-    [accept, maxSizeMB, multiple, onFilesSelected],
-  );
-
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      validateAndSelectFiles(Array.from(event.target.files || []));
-    },
-    [validateAndSelectFiles],
-  );
-
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = 'copy';
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) {
-      return;
-    }
-
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setIsDragging(false);
-      validateAndSelectFiles(Array.from(event.dataTransfer.files || []));
-    },
-    [validateAndSelectFiles],
+    [onFilesSelected, safeMaxSizeMB],
   );
 
   const handleUpload = useCallback(async () => {
