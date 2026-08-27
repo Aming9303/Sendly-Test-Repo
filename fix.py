@@ -1,37 +1,44 @@
 #!/usr/bin/env python3
-"""
-fix.py — Utility to reference a specific issue in Hazyshades/Sendly-Test-Repo.
+"""Print a repository-qualified reference to the issue being fixed."""
 
-Usage:
-    python fix.py 77
-    python fix.py 82
-
-Outputs the issue reference and exits 0 on success.
-Exits 1 on missing or invalid arguments.
-"""
+from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 
-REPO = "Hazyshades/Sendly-Test-Repo"
 
-def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: python fix.py <issue_number>")
-        print(f"Example: python fix.py 77")
-        sys.exit(1)
+REPOSITORY = "Hazyshades/Sendly-Test-Repo"
+USAGE = "Usage: python fix.py <issue-number>"
 
-    arg = sys.argv[1]
+
+def parse_issue_number(value: str) -> int:
+    """Return a positive issue number or raise ``ValueError``."""
+    if not value.isascii() or not value.isdecimal():
+        raise ValueError("issue number must contain only digits")
+
+    issue_number = int(value)
+    if issue_number <= 0:
+        raise ValueError("issue number must be greater than zero")
+
+    return issue_number
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if len(arguments) != 1:
+        print(USAGE, file=sys.stderr)
+        return 2
+
     try:
-        issue_num = int(arg)
-        if issue_num <= 0:
-            raise ValueError("Issue number must be positive")
-    except ValueError:
-        print(f"Error: '{arg}' is not a valid issue number")
-        print(f"Usage: python fix.py <issue_number>")
-        sys.exit(1)
+        issue_number = parse_issue_number(arguments[0])
+    except ValueError as error:
+        print(f"Invalid issue number: {error}.", file=sys.stderr)
+        print(USAGE, file=sys.stderr)
+        return 2
 
-    print(f"fix {REPO}#{issue_num}")
-    sys.exit(0)
+    print(f"fix {REPOSITORY}#{issue_number}")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
