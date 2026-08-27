@@ -6,7 +6,6 @@ export const IncorrectUpload = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -20,10 +19,6 @@ export const IncorrectUpload = () => {
       return;
     }
 
-    // Synchronous ref guard prevents re-entry before state flush
-    if (uploadingRef.current) return;
-    uploadingRef.current = true;
-
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -32,13 +27,7 @@ export const IncorrectUpload = () => {
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      // Upload endpoint is configurable via env so the component works outside tests.
-      const uploadUrl =
-        (typeof process !== "undefined" && process.env && process.env.SENDLY_UPLOAD_URL) ||
-        (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_UPLOAD_URL) ||
-        "/api/upload";
-
-      const response = await fetch(uploadUrl, {
+      const response = await fetch("https://example.com", {
         method: "POST",
         body: formData,
       });
@@ -57,19 +46,24 @@ export const IncorrectUpload = () => {
       setError(message);
       console.error("Error:", err);
     } finally {
-      uploadingRef.current = false;
       setIsUploading(false);
     }
   };
 
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!file || isUploading) return;
+    handleUpload();
+  };
+
   return (
-    <div>
+    <form onSubmit={handleFormSubmit}>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading || uploadingRef.current}>
+      <button type="submit" disabled={!file || isUploading}>
         {isUploading ? "Uploading..." : "Upload"}
       </button>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}
-    </div>
+    </form>
   );
 };
