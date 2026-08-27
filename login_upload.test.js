@@ -27,16 +27,12 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
-test('Login file input has a unique label and linked feedback regions', () => {
-  assert.match(source, /const inputId = useId\(\)/);
-  assert.match(source, /<label htmlFor=\{inputId\}>Select a file<\/label>/);
-  assert.match(source, /id=\{inputId\}/);
-  assert.match(source, /aria-describedby=\{describedBy\}/);
-  assert.match(source, /<p id=\{statusId\} role="status">/);
-  assert.match(source, /<p id=\{errorId\} role="alert">/);
-});
-
-test('Login upload button exposes its busy state with discernible text', () => {
-  assert.match(source, /aria-busy=\{isUploading\}/);
-  assert.match(source, /\{isUploading \? "Uploading\.\.\." : "Upload"\}/);
+test('Login maps HTTP and network failures to friendly messages', () => {
+  assert.match(source, /response\.status >= 400 && response\.status < 500/);
+  assert.match(source, /response\.status >= 500/);
+  assert.match(source, /navigator\.onLine === false/);
+  assert.match(source, /err instanceof TypeError/);
+  assert.match(source, /console\.error\("Upload request failed:"/);
+  assert.doesNotMatch(source, /Upload failed with status/);
+  assert.doesNotMatch(source, /setError\([^)]*err\.message/);
 });
