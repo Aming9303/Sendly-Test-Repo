@@ -1,26 +1,2 @@
-import React from 'react';
-import { useFileUpload } from './lib/useFileUpload';
-
-export const IncorrectUpload = () => {
-  const { file, isUploading, message, error, inputRef, handleFileChange, handleUpload } =
-    useFileUpload({
-      uploadUrl: 'https://example.com',
-      clearOnSuccess: true,
-      emptySelectionMessage: 'Please select a file before uploading',
-    });
-
-  return (
-    <div>
-      <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
-        {isUploading ? 'Uploading...' : 'Upload'}
-      </button>
-      {message && <p role="status">{message}</p>}
-      {error && (
-        <p role="alert" style={{ color: 'red' }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-};
+export { IncorrectUpload } from './Login';
+export type { IncorrectUploadProps } from './Login';
