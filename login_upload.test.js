@@ -13,8 +13,33 @@ test('Login sends binary data through the shared multipart uploader', () => {
   assert.doesNotMatch(hookSource, /Content-Type['"]?\s*:\s*['"]application\/json/);
 });
 
-test('Login derives exactly one selected file from shared state', () => {
-  assert.match(hookSource, /file: selectedFiles\[0\] \?\? null/);
+test('Login upload stores exactly one selected File in state', () => {
+  assert.match(source, /useState<File \| null>\(null\)/);
+  assert.match(source, /const selectedFile = event\.target\.files\?\.\[0\] \?\? null/);
+  assert.match(source, /setFile\(selectedFile\)/);
+});
+
+test('Login rejects files larger than the default 5 MB before upload', () => {
+  assert.match(source, /maxSizeMB\s*=\s*5/);
+  assert.match(
+    source,
+    /selectedFile\.size\s*>\s*maxSizeMB\s*\*\s*1024\s*\*\s*1024/,
+  );
+  assert.match(source, /The maximum size is \$\{maxSizeMB\} MB/);
+
+  const sizeGuard = source.indexOf('selectedFile.size > maxSizeMB * 1024 * 1024');
+  const fetchCall = source.indexOf('fetch(');
+  assert.ok(sizeGuard >= 0 && sizeGuard < fetchCall);
+
+  const rejectedSelection = source.slice(sizeGuard, source.indexOf('setFile(selectedFile)'));
+  assert.match(rejectedSelection, /setFile\(null\)/);
+  assert.match(rejectedSelection, /event\.target\.value = ""/);
+  assert.match(rejectedSelection, /return;/);
+  assert.doesNotMatch(rejectedSelection, /fetch\(/);
+});
+
+test('Login upload guards empty and in-flight submissions', () => {
+  assert.match(source, /if\s*\(\s*!file\s*\)/);
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
