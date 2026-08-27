@@ -11,23 +11,29 @@ export interface FileUploadProps {
   onUploadError?: (message: string) => void;
 }
 
-export const isFileTypeAccepted = (file: File, accept?: string): boolean => {
-  if (!accept || !accept.trim()) return true;
-  const tokens = accept.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
-  if (tokens.length === 0) return true;
+export const isFileTypeAccepted = (file: File, acceptPattern: string): boolean => {
+  const acceptedTypes = acceptPattern
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (acceptedTypes.length === 0) {
+    return true;
+  }
 
   const fileName = file.name.toLowerCase();
-  const fileType = (file.type || '').toLowerCase();
+  const mimeType = file.type.toLowerCase();
 
-  return tokens.some((token) => {
-    if (token.startsWith('.')) {
-      return fileName.endsWith(token);
+  return acceptedTypes.some((acceptedType) => {
+    if (acceptedType.startsWith('.')) {
+      return fileName.endsWith(acceptedType);
     }
-    if (token.endsWith('/*')) {
-      const typePrefix = token.slice(0, -2);
-      return fileType.startsWith(typePrefix + '/');
+
+    if (acceptedType.endsWith('/*')) {
+      return mimeType.startsWith(acceptedType.slice(0, -1));
     }
-    return fileType === token;
+
+    return mimeType === acceptedType;
   });
 };
 
@@ -40,25 +46,126 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
   onUploadError,
 }) => {
-  const {
-    selectedFiles,
-    previews,
-    error,
-    isUploading,
-    message,
-    inputRef,
-    handleFileChange,
-    handleUpload,
-    handleRemove,
-  } = useFileUpload({
-    accept,
-    maxSizeMB,
-    multiple,
-    uploadUrl,
-    onFilesSelected,
-    onUploadSuccess,
-    onUploadError,
-  });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files || []);
+      const validFiles: File[] = [];
+      const errors: string[] = [];
+
+      for (const file of files) {
+        if (file.size > maxSizeMB * 1024 * 1024) {
+          errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
+          continue;
+        }
+
+        if (!isFileTypeAccepted(file, accept)) {
+          errors.push(
+            `File "${file.name}" is not an allowed type. Allowed types: ${accept}.`,
+          );
+          continue;
+        }
+
+        validFiles.push(file);
+      }
+
+      setMessage(null);
+
+      if (validFiles.length === 0) {
+        setError(errors.length > 0 ? errors.join(' ') : 'No valid files selected.');
+        setSelectedFiles([]);
+        setPreviews([]);
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+        return;
+      }
+
+      setError(errors.length > 0 ? errors.join(' ') : null);
+      setSelectedFiles(validFiles);
+
+      const newPreviews = validFiles.map((file) => {
+        if (file.type.startsWith('image/')) {
+          return URL.createObjectURL(file);
+        }
+        return '';
+      });
+      setPreviews(newPreviews);
+
+      onFilesSelected?.(validFiles);
+    },
+    [accept, maxSizeMB, onFilesSelected],
+  );
+
+  const handleUpload = useCallback(async () => {
+    if (!uploadUrl) {
+      setError('Upload URL is not configured.');
+      return;
+    }
+
+    if (selectedFiles.length === 0) {
+      setError('Please select a file before uploading.');
+      return;
+    }
+
+    setIsUploading(true);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      const fieldName = multiple ? 'files' : 'file';
+
+      for (const file of selectedFiles) {
+        formData.append(fieldName, file, file.name);
+      }
+
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      setMessage('Upload successful!');
+      onUploadSuccess?.();
+    } catch (err) {
+      const uploadError = err instanceof Error ? err.message : 'Upload failed.';
+      setError(uploadError);
+      onUploadError?.(uploadError);
+      console.error('Upload error:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+
+  const handleRemove = useCallback(() => {
+    setSelectedFiles([]);
+    setPreviews([]);
+    setError(null);
+    setMessage(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((url) => {
+        if (url) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [previews]);
 
   return (
     <div>

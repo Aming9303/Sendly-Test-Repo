@@ -4,22 +4,36 @@ const test = require('node:test');
 
 const source = readFileSync('lib/useFileUpload.ts', 'utf8');
 
-test('shared hook has one coherent validation loop', () => {
-  const loops = source.match(/for \(const file of candidates\)/g) || [];
-  assert.equal(loops.length, 1);
+test('FileUpload has one coherent validation loop for selected files', () => {
+  assert.equal((source.match(/for \(const file of files\)/g) || []).length, 1);
   assert.match(source, /const validFiles: File\[\] = \[\]/);
   assert.match(source, /const errors: string\[\] = \[\]/);
+  assert.doesNotMatch(source, /const invalidFileNames/);
 });
 
-test('shared validator rejects oversized files before selection callbacks', () => {
-  assert.match(source, /if \(maxBytes !== null && file\.size > maxBytes\)/);
+test('FileUpload preserves size validation before type validation', () => {
+  const sizeCheck = source.indexOf('if (file.size > maxSizeMB * 1024 * 1024)');
+  const typeCheck = source.indexOf('if (!isFileTypeAccepted(file, accept))');
+
+  assert.notEqual(sizeCheck, -1);
+  assert.notEqual(typeCheck, -1);
+  assert.ok(sizeCheck < typeCheck);
+  assert.match(source, /File \"\$\{file\.name\}\" exceeds \$\{maxSizeMB\}MB limit\./);
   assert.match(source, /validFiles\.push\(file\)/);
   assert.match(source, /onFilesSelected\?\.\(validFiles\)/);
 });
 
-test('invalid-only selections reset state and the native input', () => {
-  assert.match(source, /if \(validFiles\.length === 0\)/);
-  assert.match(source, /resetSelection\(\)/);
+test('FileUpload validates MIME and extension rules from accept', () => {
+  assert.match(source, /acceptedType\.startsWith\('\.'\)/);
+  assert.match(source, /acceptedType\.endsWith\('\/\*'\)/);
+  assert.match(source, /mimeType === acceptedType/);
+  assert.match(source, /Allowed types: \$\{accept\}/);
+});
+
+test('FileUpload resets invalid-only selections', () => {
+  assert.match(source, /validFiles\.length === 0/);
+  assert.match(source, /setSelectedFiles\(\[\]\)/);
+  assert.match(source, /setPreviews\(\[\]\)/);
   assert.match(source, /inputRef\.current\.value = ''/);
 });
 
