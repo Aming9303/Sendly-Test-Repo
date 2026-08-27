@@ -1,18 +1,11 @@
 import React, { useRef, useState } from "react";
 
-export interface IncorrectUploadProps {
-  uploadUrl?: string;
-}
-
-export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
-  uploadUrl = (typeof process !== "undefined" && process.env?.REACT_APP_UPLOAD_URL) || "https://example.com",
-}) => {
+export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isUploadingRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -21,17 +14,16 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   };
 
   const handleUpload = async () => {
-    if (!uploadUrl || uploadUrl.trim() === "") {
-      setError("Upload URL is not configured.");
-      return;
-    }
-
     if (!file) {
       setError("Please select a file before uploading.");
       return;
     }
 
-    isUploadingRef.current = true;
+    if (!uploadUrl) {
+      setError("Upload URL is not configured.");
+      return;
+    }
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -59,40 +51,18 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       setError(message);
       console.error("Error:", err);
     } finally {
-      isUploadingRef.current = false;
       setIsUploading(false);
     }
   };
 
   return (
     <div>
-      <label htmlFor="login-file-input">Select file</label>
-      <input
-        ref={inputRef}
-        id="login-file-input"
-        type="file"
-        onChange={handleFileChange}
-        aria-describedby="login-upload-status login-upload-error"
-      />
-      <button
-        type="button"
-        onClick={handleUpload}
-        disabled={!file || isUploading}
-        aria-busy={isUploading}
-        aria-describedby="login-upload-status"
-      >
+      <input ref={inputRef} type="file" onChange={handleFileChange} />
+      <button type="button" onClick={handleUpload} disabled={!file || isUploading || !uploadUrl}>
         {isUploading ? "Uploading..." : "Upload"}
       </button>
-      {message && (
-        <p id="login-upload-status" role="status">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p id="login-upload-error" role="alert">
-          {error}
-        </p>
-      )}
+      {message && <p role="status">{message}</p>}
+      {error && <p role="alert">{error}</p>}
     </div>
   );
 };
