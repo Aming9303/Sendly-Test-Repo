@@ -67,7 +67,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadingRef = useRef(false);
+  const uploadInFlightRef = useRef(false);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,9 +135,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
-    // Synchronous ref guard prevents re-entry before state flush
-    if (uploadingRef.current) return;
-    uploadingRef.current = true;
+    if (uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
 
     setIsUploading(true);
     setMessage(null);
@@ -168,10 +170,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
-      uploadingRef.current = false;
+      uploadInFlightRef.current = false;
       setIsUploading(false);
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (selectedFiles.length === 0 || uploadInFlightRef.current) {
+        return;
+      }
+
+      void handleUpload();
+    },
+    [handleUpload, selectedFiles.length],
+  );
 
   const handleRemove = useCallback(() => {
     clearSelection();
@@ -209,8 +224,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [previews]);
 
   return (
-    <div>
-      <label htmlFor="file-upload-input">Select file{multiple ? 's' : ''}</label>
+    <form onSubmit={handleSubmit}>
       <input
         ref={inputRef}
         id="file-upload-input"
@@ -293,12 +307,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading || uploadingRef.current}>
+            <button type="submit" disabled={isUploading}>
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
         </>
       )}
-    </div>
+    </form>
   );
 };
