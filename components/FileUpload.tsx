@@ -79,14 +79,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, []);
 
-  const clearSelection = useCallback(() => {
-    setSelectedFiles([]);
-    setPreviews([]);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, []);
-
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
@@ -204,19 +196,26 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div>
+      <label htmlFor="file-upload-input">Select file{multiple ? 's' : ''}</label>
       <input
         ref={inputRef}
+        id="file-upload-input"
         type="file"
         accept={accept}
         multiple={multiple}
         onChange={handleFileChange}
+        aria-describedby="file-upload-error file-upload-status"
       />
       {error && (
-        <p role="alert" style={{ color: 'red' }}>
+        <p id="file-upload-error" role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p id="file-upload-status" role="status">
+          {message}
+        </p>
+      )}
       {previews.map((url, idx) =>
         url ? (
           <img
@@ -229,11 +228,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       )}
       {selectedFiles.length > 0 && (
         <>
-          <button type="button" onClick={handleRemove} disabled={isUploading}>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={isUploading}
+            aria-label="Remove all selected files"
+          >
             Remove
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading}
+              aria-busy={isUploading}
+              aria-describedby="file-upload-status"
+            >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}

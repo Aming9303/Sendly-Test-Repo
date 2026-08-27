@@ -66,12 +66,33 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
 
   return (
     <div>
-      <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <label htmlFor="login-file-input">Select file</label>
+      <input
+        ref={inputRef}
+        id="login-file-input"
+        type="file"
+        onChange={handleFileChange}
+        aria-describedby="login-upload-status login-upload-error"
+      />
+      <button
+        type="button"
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        aria-busy={isUploading}
+        aria-describedby="login-upload-status"
+      >
         {isUploading ? "Uploading..." : "Upload"}
       </button>
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert">{error}</p>}
+      {message && (
+        <p id="login-upload-status" role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p id="login-upload-error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 };
