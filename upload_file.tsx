@@ -59,12 +59,33 @@ export const IncorrectUpload = () => {
 
   return (
     <div>
-      <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <label htmlFor="upload-file-input">Select file</label>
+      <input
+        ref={inputRef}
+        id="upload-file-input"
+        type="file"
+        onChange={handleFileChange}
+        aria-describedby="upload-file-status upload-file-error"
+      />
+      <button
+        type="button"
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        aria-busy={isUploading}
+        aria-describedby="upload-file-status"
+      >
         {isUploading ? 'Uploading...' : 'Upload'}
       </button>
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert" style={{ color: 'red' }}>{error}</p>}
+      {message && (
+        <p id="upload-file-status" role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p id="upload-file-error" role="alert" style={{ color: 'red' }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 };
