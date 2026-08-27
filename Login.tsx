@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 
-export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
+export const IncorrectUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -19,11 +19,6 @@ export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
       return;
     }
 
-    if (!uploadUrl) {
-      setError("Upload URL is not configured.");
-      return;
-    }
-
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -31,6 +26,12 @@ export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
     try {
       const formData = new FormData();
       formData.append("file", file, file.name);
+
+      // Upload endpoint is configurable via env so the component works outside tests.
+      const uploadUrl =
+        (typeof process !== "undefined" && process.env && process.env.SENDLY_UPLOAD_URL) ||
+        (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_UPLOAD_URL) ||
+        "/api/upload";
 
       const response = await fetch(uploadUrl, {
         method: "POST",
@@ -58,7 +59,7 @@ export const IncorrectUpload = ({ uploadUrl }: { uploadUrl?: string }) => {
   return (
     <div>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading || !uploadUrl}>
+      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
         {isUploading ? "Uploading..." : "Upload"}
       </button>
       {message && <p role="status">{message}</p>}
