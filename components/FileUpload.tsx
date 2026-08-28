@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React from 'react';
+import { useFileUpload } from '../lib/useFileUpload';
 
 export interface FileUploadProps {
   accept?: string;
@@ -10,49 +11,76 @@ export interface FileUploadProps {
   onUploadError?: (message: string) => void;
 }
 
+interface SelectedFile {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
+const revokePreview = (selectedFile: SelectedFile) => {
+  if (selectedFile.previewUrl) {
+    URL.revokeObjectURL(selectedFile.previewUrl);
+  }
+};
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
-  maxSizeMB = 5,
+  maxSizeMB = DEFAULT_MAX_SIZE_MB,
   multiple = false,
   uploadUrl,
   onFilesSelected,
   onUploadSuccess,
   onUploadError,
 }) => {
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
+      const maxBytes = maxSizeMB * 1024 * 1024;
       const validFiles: File[] = [];
-      const errors: string[] = [];
+      const invalidFileNames: string[] = [];
 
       for (const file of files) {
-        if (file.size > maxSizeMB * 1024 * 1024) {
-          errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
+        if (file.size > maxBytes) {
+          invalidFileNames.push(file.name);
           continue;
         }
+
+        if (!isFileTypeAccepted(file, accept)) {
+          errors.push(
+            `File "${file.name}" is not an allowed type. Allowed types: ${accept}.`,
+          );
+          continue;
+        }
+
         validFiles.push(file);
       }
 
       setMessage(null);
 
       if (validFiles.length === 0) {
-        setError(errors.length > 0 ? errors.join(' ') : 'No valid files selected.');
-        setSelectedFiles([]);
-        setPreviews([]);
-        if (inputRef.current) {
-          inputRef.current.value = '';
-        }
+        clearSelection();
+        setError(
+          invalidFileNames.length > 0
+            ? `File${invalidFileNames.length === 1 ? '' : 's'} "${invalidFileNames.join(', ')}" exceed${
+                invalidFileNames.length === 1 ? 's' : ''
+              } ${maxSizeMB}MB limit.`
+            : 'No valid files selected.',
+        );
         return;
       }
 
-      setError(errors.length > 0 ? errors.join(' ') : null);
+      setError(
+        invalidFileNames.length > 0
+          ? `Skipped oversized file${invalidFileNames.length === 1 ? '' : 's'}: ${invalidFileNames.join(', ')}.`
+          : null,
+      );
       setSelectedFiles(validFiles);
 
       const newPreviews = validFiles.map((file) => {
@@ -65,7 +93,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
       onFilesSelected?.(validFiles);
     },
-    [maxSizeMB, onFilesSelected],
+    [clearSelection, maxSizeMB, onFilesSelected],
   );
 
   const handleUpload = useCallback(async () => {
@@ -79,6 +107,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
+    if (uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
+
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -87,8 +121,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const formData = new FormData();
       const fieldName = multiple ? 'files' : 'file';
 
-      for (const file of selectedFiles) {
-        formData.append(fieldName, file, file.name);
+      for (const selectedFile of selectedFiles) {
+        formData.append(fieldName, selectedFile.file, selectedFile.file.name);
       }
 
       const response = await fetch(uploadUrl, {
@@ -108,67 +142,82 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
+      uploadInFlightRef.current = false;
       setIsUploading(false);
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 
   const handleRemove = useCallback(() => {
-    setSelectedFiles([]);
-    setPreviews([]);
+    clearSelection();
     setError(null);
     setMessage(null);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, []);
+  }, [clearSelection]);
 
   useEffect(() => {
     return () => {
-      previews.forEach((url) => {
-        if (url) {
-          URL.revokeObjectURL(url);
-        }
-      });
+      selectedFilesRef.current.forEach(revokePreview);
     };
-  }, [previews]);
+  }, []);
 
   return (
     <div>
+      <label htmlFor={inputId}>Select {multiple ? 'files' : 'a file'}</label>
       <input
+        id={inputId}
         ref={inputRef}
+        id="file-upload-input"
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-describedby={describedBy}
+        aria-invalid={Boolean(error)}
         onChange={handleFileChange}
+        aria-describedby="file-upload-error file-upload-status"
       />
       {error && (
-        <p role="alert" style={{ color: 'red' }}>
+        <p id={errorId} role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
       {message && <p role="status">{message}</p>}
-      {previews.map((url, idx) =>
-        url ? (
-          <img
-            key={idx}
-            src={url}
-            alt="preview"
-            style={{ width: 100, height: 100, objectFit: 'cover' }}
-          />
-        ) : null,
-      )}
+      {selectedFiles.map((item) => (
+        <div key={item.id}>
+          {item.previewUrl && (
+            <img
+              src={item.previewUrl}
+              alt="preview"
+              style={{ width: 100, height: 100, objectFit: 'cover' }}
+            />
+          )}
+          {multiple && (
+            <button
+              type="button"
+              onClick={() => handleRemoveFile(item.id)}
+              disabled={isUploading}
+              aria-label={`Remove ${item.file.name}`}
+            >
+              Remove {item.file.name}
+            </button>
+          )}
+        </div>
+      ))}
       {selectedFiles.length > 0 && (
         <>
           <button type="button" onClick={handleRemove} disabled={isUploading}>
-            Remove
+            {multiple ? 'Remove all' : 'Remove'}
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading}
+              aria-busy={isUploading}
+            >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           )}
         </>
       )}
-    </div>
+    </form>
   );
 };
