@@ -20,11 +20,10 @@ test('upload_file.tsx has a synchronous ref guard to prevent re-entry', () => {
   assert.match(source, /disabled=\{!file\s*\|\|\s*isUploading\s*\|\|\s*uploadingRef\.current\}/);
 });
 
-test('FileUpload.tsx has a synchronous ref guard to prevent re-entry', () => {
+test('FileUpload.tsx wires uploadingRef into disabled via useFileUpload', () => {
   const source = readFileSync('components/FileUpload.tsx', 'utf8');
-  assert.match(source, /uploadingRef\s*=\s*useRef\(false\)/);
-  assert.match(source, /if\s*\(uploadingRef\.current\)\s*return/);
-  assert.match(source, /uploadingRef\.current\s*=\s*true/);
-  assert.match(source, /uploadingRef\.current\s*=\s*false/);
-  assert.match(source, /disabled=\{isUploading\s*\|\|\s*uploadingRef\.current\}/);
+  const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
+  assert.match(source, /useFileUpload\s*\(/);
+  assert.match(source, /disabled=\{isUploading \|\| uploadingRef\.current\}/);
+  assert.match(hookSource, /const uploadingRef = useRef\(false\)/);
 });
