@@ -37,6 +37,7 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
     inputRef,
     handleFileChange,
     handleUpload,
+    uploadingRef,
   } = useFileUpload({
     uploadUrl,
     maxSizeMB: 5,
@@ -49,7 +50,11 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   return (
     <div>
       <input ref={inputRef} type="file" onChange={handleFileChange} />
-      <button type="button" onClick={handleUpload} disabled={!file || isUploading}>
+      <button
+        type="button"
+        onClick={handleUpload}
+        disabled={!file || isUploading || uploadingRef.current}
+      >
         {isUploading ? "Uploading..." : "Upload"}
       </button>
       {message && <p role="status">{message}</p>}
