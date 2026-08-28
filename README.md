@@ -21,7 +21,7 @@ Webhook integration repo for GitHub agent bounty workflows (Sendly).
 npm test
 ```
 
-Runs component and upload tests (`upload_file.test.js`, `login_upload.test.js`, `components/file_upload.test.js`).
+Runs component and upload tests. Node.js version is pinned to 20.19.5 in .nvmrc. (`upload_file.test.js`, `login_upload.test.js`, `components/file_upload.test.js`).
 
 ## Contributing
 
