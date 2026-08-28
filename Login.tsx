@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useFileUpload } from "./lib/useFileUpload";
 
 export interface IncorrectUploadProps {
   uploadUrl?: string;
@@ -21,6 +22,7 @@ const getDefaultUploadUrl = () => {
 
 export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   uploadUrl = getDefaultUploadUrl(),
+  maxSizeMB = 5,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -29,8 +31,19 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlightRef = useRef(false);
 
+  useFileUpload({ uploadUrl, maxSizeMB });
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(event.target.files?.[0] ?? null);
+    const selectedFile = event.target.files?.[0] ?? null;
+
+    if (selectedFile && selectedFile.size > maxSizeMB * 1024 * 1024) {
+      setError(`The maximum size is ${maxSizeMB} MB`);
+      setFile(null);
+      event.target.value = "";
+      return;
+    }
+
+    setFile(selectedFile);
     setMessage(null);
     setError(null);
   };
@@ -50,6 +63,15 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
     setIsUploading(true);
     setMessage(null);
     setError(null);
+
+    const endpoint = uploadUrl.trim();
+
+    if (!endpoint) {
+      setError("Upload URL is not configured.");
+      uploadInFlightRef.current = false;
+      setIsUploading(false);
+      return;
+    }
 
     try {
       const formData = new FormData();
