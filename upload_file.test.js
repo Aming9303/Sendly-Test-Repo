@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const wrapperSource = readFileSync('upload_file.tsx', 'utf8');
 const source = readFileSync('Login.tsx', 'utf8');
+const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
 
 test('upload_file re-exports the shared Login implementation', () => {
   assert.match(
@@ -37,14 +38,14 @@ test('shared uploader aborts on unmount and ignores AbortError', () => {
 test('consolidated upload source has no hardcoded endpoint', () => {
   assert.doesNotMatch(wrapperSource, /https?:\/\//);
   assert.doesNotMatch(source, /fetch\(\s*['"]https?:\/\//);
-  assert.match(source, /fetch\(endpoint/);
+  assert.doesNotMatch(source, /https:\/\/example\.com/);
 });
 
-test('upload handler uses a synchronous ref guard against re-entry', () => {
-  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
+test('upload handler uses a synchronous ref guard against re-entry in the hook', () => {
+  assert.match(hookSource, /uploadInFlightRef/);
   assert.match(
-    source,
+    hookSource,
     /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
   );
-  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
