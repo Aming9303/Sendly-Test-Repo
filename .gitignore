@@ -1,1 +1,5 @@
 node_modules/
+
+# Agent solution notes and dumps
+SOLUTION_ISSUE_*.md
+AGENTCLAW_*
