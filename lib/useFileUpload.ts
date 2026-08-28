@@ -75,7 +75,7 @@ export const useFileUpload = ({
   const previewsRef = useRef<string[]>([]);
 
   const replacePreviews = useCallback((nextPreviews: string[]) => {
-    previewsRef.current.forEach((url) => {
+    previewsRef.current.forEach((url: string) => {
       if (url) {
         URL.revokeObjectURL(url);
       }
@@ -244,7 +244,7 @@ export const useFileUpload = ({
       uploadingRef.current = false;
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
-      previewsRef.current.forEach((url) => {
+      previewsRef.current.forEach((url: string) => {
         if (url) {
           URL.revokeObjectURL(url);
         }
