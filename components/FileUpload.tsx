@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useFileUpload } from '../lib/useFileUpload';
+
+const DEFAULT_MAX_SIZE_MB = 5;
 
 export interface FileUploadProps {
   accept?: string;
@@ -23,6 +25,23 @@ const revokePreview = (selectedFile: SelectedFile) => {
   }
 };
 
+const isFileTypeAccepted = (file: File, accept: string): boolean => {
+  const acceptedTypes = accept.split(',').map(t => t.trim());
+  const fileType = file.type;
+  const fileName = file.name.toLowerCase();
+
+  return acceptedTypes.some(acceptedType => {
+    if (acceptedType.startsWith('.')) {
+      return fileName.endsWith(acceptedType.toLowerCase());
+    }
+    if (acceptedType.endsWith('/*')) {
+      const prefix = acceptedType.slice(0, -2);
+      return fileType.startsWith(prefix);
+    }
+    return fileType === acceptedType;
+  });
+};
+
 export const FileUpload: React.FC<FileUploadProps> = ({
   accept = 'image/*,.pdf,.doc,.docx',
   maxSizeMB = DEFAULT_MAX_SIZE_MB,
@@ -38,6 +57,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlightRef = useRef(false);
+  const selectedFilesRef = useRef<SelectedFile[]>([]);
+
+  const inputId = 'file-upload-input';
+  const errorId = 'file-upload-error';
+  const statusId = 'file-upload-status';
+
+  // Keep ref in sync for cleanup
+  useEffect(() => {
+    selectedFilesRef.current = selectedFiles;
+  }, [selectedFiles]);
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +74,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const maxBytes = maxSizeMB * 1024 * 1024;
       const validFiles: File[] = [];
       const invalidFileNames: string[] = [];
+      const errors: string[] = [];
 
       for (const file of files) {
         if (file.size > maxBytes) {
@@ -81,15 +111,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           ? `Skipped oversized file${invalidFileNames.length === 1 ? '' : 's'}: ${invalidFileNames.join(', ')}.`
           : null,
       );
-      setSelectedFiles(validFiles);
-
-      const newPreviews = validFiles.map((file) => {
-        if (file.type.startsWith('image/')) {
-          return URL.createObjectURL(file);
-        }
-        return '';
-      });
-      setPreviews(newPreviews);
+      const transformedFiles: SelectedFile[] = validFiles.map((file) => ({
+        id: crypto.randomUUID(),
+        file: file,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+      }));
+      setSelectedFiles(transformedFiles);
 
       onFilesSelected?.(validFiles);
     },
@@ -147,6 +174,28 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 
+  const clearSelection = useCallback(() => {
+    // Revoke preview URLs to free memory
+    selectedFiles.forEach(revokePreview);
+    setSelectedFiles([]);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, [selectedFiles]);
+
+  const handleRemoveFile = useCallback(
+    (id: string) => {
+      setSelectedFiles((prevFiles) => {
+        const fileToRemove = prevFiles.find((f) => f.id === id);
+        if (fileToRemove) {
+          revokePreview(fileToRemove);
+        }
+        return prevFiles.filter((f) => f.id !== id);
+      });
+    },
+    []
+  );
+
   const handleRemove = useCallback(() => {
     clearSelection();
     setError(null);
@@ -165,14 +214,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       <input
         id={inputId}
         ref={inputRef}
-        id="file-upload-input"
         type="file"
         accept={accept}
         multiple={multiple}
-        aria-describedby={describedBy}
+        aria-describedby={`${errorId} ${statusId}`}
         aria-invalid={Boolean(error)}
         onChange={handleFileChange}
-        aria-describedby="file-upload-error file-upload-status"
       />
       {error && (
         <p id={errorId} role="alert" style={{ color: 'red' }}>
@@ -218,6 +265,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           )}
         </>
       )}
-    </form>
+    </div>
   );
 };
