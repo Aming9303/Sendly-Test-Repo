@@ -5,17 +5,10 @@ const { assertValidationContract } = require('./components/file_upload_contract.
 
 const source = readFileSync('lib/useFileUpload.ts', 'utf8');
 
-test('FileUpload follows the shared file validation contract', () => {
-  assertValidationContract(source);
-});
-
-test('FileUpload resets invalid selections and only reports valid files', () => {
-  assert.match(source, /inputRef\.current\.value = ''/);
-  assert.match(source, /setSelectedFiles\(validFiles\)/);
-  assert.match(source, /onFilesSelected\?\.\(validFiles\)/);
-  assert.doesNotMatch(source, /onFilesSelected\?\.\(files\)/);
-});
-
+// Validation, upload, and empty-selection behavior is covered by
+// components/file_upload.test.js. Keep this suite focused on the preview URL
+// lifecycle so the two files do not encode competing versions of the same
+// contract.
 test('FileUpload keeps image preview URL cleanup', () => {
   assert.match(source, /URL\.createObjectURL\(file\)/);
   assert.match(source, /URL\.revokeObjectURL\(url\)/);
