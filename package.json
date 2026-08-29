@@ -2,11 +2,8 @@
   "name": "sendly-test-repo",
   "private": true,
   "scripts": {
-    "test": "node --test",
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.18",
-    "typescript": "^7.0.2"
+    "test": "npm run test:js && npm run test:py",
+    "test:js": "node --test",
+    "test:py": "python3 -m unittest test_fix -v"
   }
 }
