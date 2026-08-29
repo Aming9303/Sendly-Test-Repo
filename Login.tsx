@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 
 export interface IncorrectUploadProps {
   uploadUrl?: string;
+  maxSizeMB?: number;
 }
 
 type SendlyRuntime = typeof globalThis & {
@@ -21,6 +22,7 @@ const getDefaultUploadUrl = () => {
 
 export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   uploadUrl = getDefaultUploadUrl(),
+  maxSizeMB = 5,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -30,12 +32,30 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   const uploadInFlightRef = useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(event.target.files?.[0] ?? null);
+    const selectedFile = event.target.files?.[0] ?? null;
     setMessage(null);
     setError(null);
+
+    if (selectedFile && selectedFile.size > maxSizeMB * 1024 * 1024) {
+      setFile(null);
+      event.target.value = "";
+      setError(
+        `File "${selectedFile.name}" is too large. The maximum size is ${maxSizeMB} MB.`,
+      );
+      return;
+    }
+
+    setFile(selectedFile);
   };
 
   const handleUpload = async () => {
+    const endpoint = uploadUrl.trim();
+
+    if (!endpoint) {
+      setError("Upload URL is not configured.");
+      return;
+    }
+
     if (!file) {
       setError("Please select a file before uploading.");
       return;
