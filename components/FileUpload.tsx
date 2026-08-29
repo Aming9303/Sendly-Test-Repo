@@ -161,25 +161,23 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div>
-      <label htmlFor={inputId}>Select {multiple ? 'files' : 'a file'}</label>
+      <label htmlFor="file-upload-input">Select {multiple ? 'files' : 'a file'}</label>
       <input
-        id={inputId}
         ref={inputRef}
         id="file-upload-input"
         type="file"
         accept={accept}
         multiple={multiple}
-        aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         onChange={handleFileChange}
         aria-describedby="file-upload-error file-upload-status"
       />
       {error && (
-        <p id={errorId} role="alert" style={{ color: 'red' }}>
+        <p id="file-upload-error" role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
+      {message && <p id="file-upload-status" role="status">{message}</p>}
       {selectedFiles.map((item) => (
         <div key={item.id}>
           {item.previewUrl && (
