@@ -75,42 +75,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadInFlightRef = useRef(false);
-  const selectedFilesRef = useRef<SelectedFile[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    selectedFilesRef.current = selectedFiles;
-  }, [selectedFiles]);
+    isMountedRef.current = true;
 
-  useEffect(() => {
     return () => {
-      selectedFilesRef.current.forEach(revokePreview);
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
-
-  const clearSelection = useCallback(() => {
-    selectedFiles.forEach(revokePreview);
-    setSelectedFiles([]);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-    onFilesSelected?.([]);
-  }, [selectedFiles, onFilesSelected]);
-
-  const handleRemoveFile = useCallback(
-    (id: string) => {
-      setSelectedFiles((prev) => {
-        const toRemove = prev.find((item) => item.id === id);
-        if (toRemove) {
-          revokePreview(toRemove);
-        }
-        const updated = prev.filter((item) => item.id !== id);
-        onFilesSelected?.(updated.map((item) => item.file));
-        return updated;
-      });
-    },
-    [onFilesSelected],
-  );
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,11 +166,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
-    if (uploadInFlightRef.current) {
-      return;
-    }
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-    uploadInFlightRef.current = true;
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -210,22 +185,37 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
         throw new Error(`Upload failed with status ${response.status}`);
       }
 
-      setMessage('Upload successful!');
-      onUploadSuccess?.();
+      if (isMountedRef.current) {
+        setMessage('Upload successful!');
+        onUploadSuccess?.();
+      }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const uploadError = err instanceof Error ? err.message : 'Upload failed.';
       setError(uploadError);
       onUploadError?.(uploadError);
       console.error('Upload error:', err);
     } finally {
-      uploadInFlightRef.current = false;
-      setIsUploading(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        if (isMountedRef.current) {
+          setIsUploading(false);
+        }
+      }
     }
   }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
 

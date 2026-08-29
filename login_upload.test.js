@@ -59,3 +59,11 @@ test('Login upload uses a configurable endpoint and rejects empty configuration'
   assert.match(source, /fetch\(endpoint/);
   assert.doesNotMatch(source, /https:\/\/example\.com/);
 });
+
+test('Login aborts uploads on unmount without reporting AbortError', () => {
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /signal: controller\.signal/);
+  assert.match(source, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(source, /err\.name === ["']AbortError["'][\s\S]*return/);
+  assert.match(source, /if \(isMountedRef\.current\)[\s\S]*setIsUploading\(false\)/);
+});

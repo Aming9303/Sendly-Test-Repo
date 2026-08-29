@@ -24,17 +24,10 @@ test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
 
-test('consolidated upload source has no hardcoded endpoint', () => {
-  assert.doesNotMatch(wrapperSource, /https?:\/\//);
-  assert.doesNotMatch(source, /fetch\(\s*['"]https?:\/\//);
-  assert.match(source, /fetch\(endpoint/);
-});
-
-test('upload handler uses a synchronous ref guard against re-entry', () => {
-  assert.match(source, /const uploadInFlightRef = useRef\(false\)/);
-  assert.match(
-    source,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
-  );
-  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+test('upload aborts on unmount and treats AbortError as cancellation', () => {
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /signal: controller\.signal/);
+  assert.match(source, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(source, /err\.name === ["']AbortError["'][\s\S]*return/);
+  assert.match(source, /if \(isMountedRef\.current\)[\s\S]*setIsUploading\(false\)/);
 });

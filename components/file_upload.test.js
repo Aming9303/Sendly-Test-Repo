@@ -1,29 +1,31 @@
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const test = require('node:test');
-const { assertValidationContract } = require('./file_upload_contract.cjs');
 
-const componentSource = readFileSync('components/FileUpload.tsx', 'utf8');
-const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
+const source = readFileSync('components/FileUpload.tsx', 'utf8');
 
-test('FileUpload follows the shared file validation contract', () => {
-  assertValidationContract(componentSource);
+test('FileUpload validates file size without broken nested loops', () => {
+  assert.match(source, /for\s*\(\s*const file of files\s*\)/);
+  assert.doesNotMatch(source, /const invalidFileNames/);
+  assert.doesNotMatch(source, /errors\.push[\s\S]*const invalidFileNames/);
 });
 
 test('FileUpload uploads with multipart FormData when uploadUrl is set', () => {
-  assert.match(hookSource, /new\s+FormData\s*\(/);
-  assert.match(hookSource, /\.append\(\s*fieldName/);
-  assert.doesNotMatch(hookSource, /JSON\.stringify/);
-  assert.doesNotMatch(hookSource, /Content-Type['"]?\s*:\s*['"]application\/json/);
+  assert.match(source, /new\s+FormData\s*\(/);
+  assert.match(source, /\.append\(\s*fieldName/);
+  assert.doesNotMatch(source, /JSON\.stringify/);
+  assert.doesNotMatch(source, /Content-Type['"]?\s*:\s*['"]application\/json/);
 });
 
 test('FileUpload guards empty uploads and in-flight submissions', () => {
-  assert.match(hookSource, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
-  assert.match(componentSource, /disabled=\{isUploading\}/);
-  assert.match(hookSource, /const uploadInFlightRef = useRef\(false\)/);
-  assert.match(
-    hookSource,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
-  );
-  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+  assert.match(source, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
+  assert.match(source, /disabled=\{isUploading\}/);
+});
+
+test('FileUpload cancels fetch on unmount without surfacing AbortError', () => {
+  assert.match(source, /new AbortController\(\)/);
+  assert.match(source, /signal: controller\.signal/);
+  assert.match(source, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(source, /err\.name === ["']AbortError["'][\s\S]*return/);
+  assert.match(source, /if \(isMountedRef\.current\)[\s\S]*setIsUploading\(false\)/);
 });

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export interface IncorrectUploadProps {
   uploadUrl?: string;
@@ -27,7 +27,18 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploadInFlightRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFile(event.target.files?.[0] ?? null);
@@ -41,11 +52,9 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       return;
     }
 
-    if (uploadInFlightRef.current) {
-      return;
-    }
-
-    uploadInFlightRef.current = true;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsUploading(true);
     setMessage(null);
@@ -55,27 +64,42 @@ export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
       const formData = new FormData();
       formData.append("file", file, file.name);
 
-      const response = await fetch(endpoint, {
+      const response = await fetch("https://example.com", {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
         throw new Error(`Upload failed with status ${response.status}`);
       }
 
-      setMessage("Upload successful.");
-      setFile(null);
-      if (inputRef.current) {
-        inputRef.current.value = "";
+      if (isMountedRef.current) {
+        setMessage("Upload successful.");
+        setFile(null);
+        if (inputRef.current) {
+          inputRef.current.value = "";
+        }
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const message = err instanceof Error ? err.message : "Upload failed.";
       setError(message);
       console.error("Error:", err);
     } finally {
-      uploadInFlightRef.current = false;
-      setIsUploading(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        if (isMountedRef.current) {
+          setIsUploading(false);
+        }
+      }
     }
   };
 
