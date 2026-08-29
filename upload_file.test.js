@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const wrapperSource = readFileSync('upload_file.tsx', 'utf8');
 const source = readFileSync('Login.tsx', 'utf8');
+const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
 
 test('upload_file re-exports the shared Login implementation', () => {
   assert.match(
@@ -24,10 +25,24 @@ test('file change stores a single File from the FileList', () => {
   assert.match(source, /setFile\(\s*event\.target\.files\??\.\[0\]/);
 });
 
-test('upload aborts on unmount and treats AbortError as cancellation', () => {
-  assert.match(source, /new AbortController\(\)/);
-  assert.match(source, /signal: controller\.signal/);
-  assert.match(source, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
-  assert.match(source, /err\.name === ["']AbortError["'][\s\S]*return/);
-  assert.match(source, /if \(isMountedRef\.current\)[\s\S]*setIsUploading\(false\)/);
+test('shared uploader aborts on unmount and ignores AbortError', () => {
+  assert.match(hookSource, /new AbortController\(\)/);
+  assert.match(hookSource, /signal: controller\.signal/);
+  assert.match(hookSource, /return \(\) => \{[\s\S]*abortControllerRef\.current\?\.abort\(\)/);
+  assert.match(hookSource, /uploadError\.name === 'AbortError'[\s\S]*return/);
+});
+
+test('consolidated upload source has no hardcoded endpoint', () => {
+  assert.doesNotMatch(wrapperSource, /https?:\/\//);
+  assert.doesNotMatch(source, /fetch\(\s*['"]https?:\/\//);
+  assert.doesNotMatch(source, /https:\/\/example\.com/);
+});
+
+test('upload handler uses a synchronous ref guard against re-entry in the hook', () => {
+  assert.match(hookSource, /uploadInFlightRef/);
+  assert.match(
+    hookSource,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
