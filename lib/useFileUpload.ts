@@ -1,4 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  UploadHttpError,
+  getFriendlyUploadErrorMessage,
+} from './mapUploadError.cjs';
+
+export { UploadHttpError, getFriendlyUploadErrorMessage };
 
 export interface UseFileUploadOptions {
   uploadUrl?: string;
@@ -184,7 +190,7 @@ export const useFileUpload = ({
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
+        throw new UploadHttpError(response.status);
       }
 
       if (isMountedRef.current) {
@@ -195,7 +201,10 @@ export const useFileUpload = ({
         onUploadSuccess?.();
       }
     } catch (uploadError) {
-      if (uploadError instanceof Error && uploadError.name === 'AbortError') {
+      if (
+        uploadError instanceof Error &&
+        (uploadError.name === 'AbortError' || uploadError.name === 'CanceledError')
+      ) {
         return;
       }
 
@@ -203,8 +212,7 @@ export const useFileUpload = ({
         return;
       }
 
-      const uploadErrorMessage =
-        uploadError instanceof Error ? uploadError.message : 'Upload failed.';
+      const uploadErrorMessage = getFriendlyUploadErrorMessage(uploadError);
       setError(uploadErrorMessage);
       onUploadError?.(uploadErrorMessage);
       console.error('Upload error:', uploadError);
