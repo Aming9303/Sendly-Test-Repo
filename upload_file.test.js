@@ -39,12 +39,12 @@ test('consolidated upload source has no hardcoded endpoint', () => {
 });
 
 test('upload handler uses a synchronous ref guard against re-entry in the hook', () => {
-  assert.match(hookSource, /uploadInFlightRef/);
+  assert.match(hookSource, /uploadingRef/);
   assert.match(
     hookSource,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+    /if \(uploadingRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadingRef\.current = true;/,
   );
-  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+  assert.match(hookSource, /finally \{[\s\S]*uploadingRef\.current = false;/);
 });
 
 test('orphan upload_file_fixed.tsx and CorrectedUpload are not present in the repo', () => {

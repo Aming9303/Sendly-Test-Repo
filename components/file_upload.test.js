@@ -22,12 +22,12 @@ test('FileUpload uploads with multipart FormData via the shared hook', () => {
 });
 
 test('FileUpload guards empty uploads and in-flight submissions via the hook', () => {
-  assert.match(source, /disabled=\{isUploading\}/);
+  assert.match(source, /disabled=\{isUploading \|\| uploadingRef\.current\}/);
   assert.match(hookSource, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
-  assert.match(hookSource, /const uploadInFlightRef = useRef\(false\)/);
+  assert.match(hookSource, /const uploadingRef = useRef\(false\)/);
   assert.match(
     hookSource,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+    /if \(uploadingRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadingRef\.current = true;/,
   );
-  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+  assert.match(hookSource, /finally \{[\s\S]*uploadingRef\.current = false;/);
 });

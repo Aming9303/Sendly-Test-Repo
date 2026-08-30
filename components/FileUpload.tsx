@@ -36,6 +36,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     handleFileChange,
     handleUpload,
     handleRemove,
+    uploadingRef,
   } = useFileUpload({
     accept,
     maxSizeMB,
@@ -82,14 +83,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       ))}
       {selectedFiles.length > 0 && (
         <>
-          <button type="button" onClick={handleRemove} disabled={isUploading}>
+          <button type="button" onClick={handleRemove} disabled={isUploading || uploadingRef.current}>
             {multiple ? 'Remove all' : 'Remove'}
           </button>
           {uploadUrl ? (
             <button
               type="button"
               onClick={handleUpload}
-              disabled={isUploading}
+              disabled={isUploading || uploadingRef.current}
               aria-busy={isUploading}
             >
               {isUploading ? 'Uploading...' : 'Upload'}

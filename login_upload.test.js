@@ -28,13 +28,13 @@ test('Login rejects oversized files via the shared hook maxSizeMB option', () =>
 });
 
 test('Login upload guards empty and in-flight submissions via the hook', () => {
-  assert.match(source, /disabled=\{!file \|\| isUploading\}/);
-  assert.match(hookSource, /uploadInFlightRef/);
+  assert.match(source, /disabled=\{!file \|\| isUploading \|\| uploadingRef\.current\}/);
+  assert.match(hookSource, /uploadingRef/);
   assert.match(
     hookSource,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+    /if \(uploadingRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadingRef\.current = true;/,
   );
-  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+  assert.match(hookSource, /finally \{[\s\S]*uploadingRef\.current = false;/);
 });
 
 test('Login upload uses a configurable endpoint via the shared hook', () => {

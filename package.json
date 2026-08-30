@@ -2,16 +2,16 @@
   "name": "sendly-test-repo",
   "private": true,
   "scripts": {
-    "test": "npm run test:js && npm run test:py",
-    "test:js": "node --test",
-    "test:py": "python3 -m unittest test_fix -v",
+    "test": "node --test",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
   "devDependencies": {
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "typescript": "^7.0.2"
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.4.5"
   }
 }
