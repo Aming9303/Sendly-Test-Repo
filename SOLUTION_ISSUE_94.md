@@ -3,39 +3,53 @@
 ## 🛠️ Proposed Solution (by Aditya Waghamare)
 
 ### Analysis
-The file picker and upload button are currently sitting loose inside a `<div>` with `onClick` handlers rather than being wrapped inside a semantic `<form>`. As a result, keyboard users who select a file and hit `Enter` do not trigger any form submission. Additionally, the button is defined as `type="button"` with no submit association.
+The file picker and upload button are currently sitting loose inside a `<div>` without a wrapping `<form>`. Consequently, keyboard users pressing `Enter` after selecting a file do not trigger any submission path, and the upload button is explicitly set to `type="button"`.
 
 ### Fix
-Wrap the file input and upload action button inside a `<form>` element, set the button `type="submit"`, and wire up the `onSubmit` handler to prevent the default page reload and call the upload handler safely with the existing double-submit guard.
+Wrap the file input and upload controls in a semantic `<form>` element with an `onSubmit` handler, update the upload button to `type="submit"`, and ensure `e.preventDefault()` is called to prevent full-page reloads while respecting existing in-flight / double-submit guards.
 
 ### Implementation
 ```tsx
-<form 
-  onSubmit={(e) => { 
-    e.preventDefault(); 
-    if (!selectedFile || isUploading) return;
-    handleUpload(); 
-  }}
->
-  <div className="upload-container">
-    <input 
-      type="file" 
-      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
-    />
-    <button 
-      type="submit" 
-      disabled={!selectedFile || isUploading}
+export default function FileUploadComponent() {
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = () => {
+    if (!file || uploading) return;
+    setUploading(true);
+    // ... existing upload logic ...
+    setTimeout(() => setUploading(false), 1500);
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleUpload();
+      }}
+      className="flex flex-col gap-4 items-center"
     >
-      Upload
-    </button>
-  </div>
-</form>
+      <input
+        type="file"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        aria-label="Choose file to upload"
+      />
+      <button
+        type="submit"
+        disabled={!file || uploading}
+        className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+      >
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+    </form>
+  );
+}
 ```
 
 ### Testing
-1. Select a file using the keyboard/file picker.
-2. Press `Enter` on the keyboard. Verify that `handleUpload()` is triggered and the file uploads without page reload.
-3. Verify that pressing `Enter` when no file is selected or during an active upload does not trigger unintended submissions (guarded).
+1. Select a file using the file picker via keyboard or mouse.
+2. Press `Enter` and verify that `handleUpload()` is correctly triggered without reloading the page.
+3. Verify that double-submit guards prevent concurrent uploads when in-flight.
 
 
 ---
