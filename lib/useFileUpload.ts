@@ -26,9 +26,7 @@ export interface UseFileUploadReturn {
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleUpload: () => Promise<void>;
   handleRemove: () => void;
-  setFile: React.Dispatch<React.SetStateAction<File | null>>;
-  setMessage: React.Dispatch<React.SetStateAction<string | null>>;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  clearSelection: () => void;
 }
 
 export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUploadReturn {
@@ -41,6 +39,36 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
     onUploadError,
   } = options;
 
+  const fileName = file.name.toLowerCase();
+  const fileType = file.type.toLowerCase();
+
+  return accept.split(',').some((rawToken) => {
+    const token = rawToken.trim().toLowerCase();
+
+    if (token.startsWith('.')) {
+      return fileName.endsWith(token);
+    }
+
+    if (token.endsWith('/*')) {
+      return fileType.startsWith(token.slice(0, -1));
+    }
+
+    return fileType === token;
+  });
+};
+
+export const useFileUpload = ({
+  uploadUrl,
+  accept,
+  maxSizeMB = 5,
+  multiple = false,
+  clearOnSuccess = false,
+  successMessage = 'Upload successful!',
+  emptySelectionMessage = 'Please select a file before uploading.',
+  onFilesSelected,
+  onUploadSuccess,
+  onUploadError,
+}: UseFileUploadOptions): UseFileUploadResult => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -71,29 +99,57 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
     }
   }, []);
 
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
+  const clearSelection = useCallback(() => {
+    setSelectedFiles([]);
+    replacePreviews([]);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, [replacePreviews]);
+
+  const selectFiles = useCallback(
+    (files: File[]) => {
+      const maxBytes = maxSizeMB * 1024 * 1024;
       const validFiles: File[] = [];
-      const errors: string[] = [];
+      const invalidFileNames: string[] = [];
 
       for (const file of files) {
-        if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
-          errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
+        if (file.size > maxBytes) {
+          invalidFileNames.push(file.name);
           continue;
         }
+
+        if (!isAcceptedFile(file, accept)) {
+          invalidFileNames.push(file.name);
+          continue;
+        }
+
         validFiles.push(file);
       }
 
       setMessage(null);
 
       if (validFiles.length === 0) {
-        setError(errors.length > 0 ? errors.join(" ") : "No valid files selected.");
         clearSelection();
+        setError(
+          invalidFileNames.length > 0
+            ? `File${invalidFileNames.length === 1 ? '' : 's'} "${invalidFileNames.join(', ')}" exceed${
+                invalidFileNames.length === 1 ? 's' : ''
+              } ${maxSizeMB}MB limit.`
+            : 'No valid files selected.',
+        );
         return;
       }
 
-      setError(errors.length > 0 ? errors.join(" ") : null);
+      const nextPreviews = validFiles.map((file) =>
+        file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+      );
+
+      setError(
+        invalidFileNames.length > 0
+          ? `Skipped oversized file${invalidFileNames.length === 1 ? '' : 's'}: ${invalidFileNames.join(', ')}.`
+          : null,
+      );
       setSelectedFiles(validFiles);
 
       const newPreviews = validFiles.map((file) => {
@@ -106,7 +162,16 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
 
       onFilesSelected?.(validFiles);
     },
-    [maxSizeMB, onFilesSelected, clearSelection],
+    [accept, clearSelection, maxSizeMB, onFilesSelected, replacePreviews],
+  );
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const rawFiles = Array.from(event.target.files ?? []);
+      const files = multiple ? rawFiles : rawFiles.slice(0, 1);
+      selectFiles(files);
+    },
+    [multiple, selectFiles],
   );
 
   const handleUpload = useCallback(async () => {
@@ -152,7 +217,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
       if (isMountedRef.current) {
         setMessage(successMessage);
         if (clearOnSuccess) {
-          resetSelection();
+          clearSelection();
         }
         onUploadSuccess?.();
       }
@@ -176,11 +241,22 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
       setIsUploading(false);
       abortControllerRef.current = null;
     }
-  }, [uploadUrl, selectedFiles, isUploading, multiple, onUploadSuccess, onUploadError, clearSelection]);
+  }, [
+    clearOnSuccess,
+    clearSelection,
+    emptySelectionMessage,
+    multiple,
+    onUploadError,
+    onUploadSuccess,
+    selectedFiles,
+    successMessage,
+    uploadUrl,
+  ]);
 
   const handleRemove = useCallback(() => {
-    setError(null);
     clearSelection();
+    setError(null);
+    setMessage(null);
   }, [clearSelection]);
 
   useEffect(() => {
@@ -207,8 +283,6 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
     handleFileChange,
     handleUpload,
     handleRemove,
-    setFile,
-    setMessage,
-    setError,
+    clearSelection,
   };
 }
