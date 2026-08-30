@@ -1,5 +1,5 @@
-import React, { useId } from 'react';
-import { useFileUpload } from '../lib/useFileUpload';
+import React from "react";
+import { useFileUpload, UseFileUploadOptions } from "../lib/useFileUpload";
 
 export interface FileUploadProps {
   accept?: string;
@@ -14,34 +14,28 @@ export interface FileUploadProps {
 const DEFAULT_MAX_SIZE_MB = 10;
 
 export const FileUpload: React.FC<FileUploadProps> = ({
-  accept = 'image/*,.pdf,.doc,.docx',
-  maxSizeMB = DEFAULT_MAX_SIZE_MB,
+  accept = "image/*,.pdf,.doc,.docx",
+  maxSizeMB = 5,
   multiple = false,
   uploadUrl,
   onFilesSelected,
   onUploadSuccess,
   onUploadError,
 }) => {
-  const inputId = useId();
-  const errorId = `${inputId}-error`;
-  const statusId = `${inputId}-status`;
-
   const {
     selectedFiles,
     previews,
+    error,
     isUploading,
     message,
-    error,
     inputRef,
     handleFileChange,
     handleUpload,
     handleRemove,
-    uploadingRef,
   } = useFileUpload({
-    accept,
+    uploadUrl,
     maxSizeMB,
     multiple,
-    uploadUrl,
     onFilesSelected,
     onUploadSuccess,
     onUploadError,
@@ -60,14 +54,20 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onChange={handleFileChange}
       />
       {error && (
-        <p id={errorId} role="alert" style={{ color: 'red' }}>
+        <p role="alert" style={{ color: "red" }}>
           {error}
         </p>
       )}
-      {message && (
-        <p id={statusId} role="status">
-          {message}
-        </p>
+      {message && <p role="status">{message}</p>}
+      {previews.map((url, idx) =>
+        url ? (
+          <img
+            key={idx}
+            src={url}
+            alt="preview"
+            style={{ width: 100, height: 100, objectFit: "cover" }}
+          />
+        ) : null,
       )}
       {selectedFiles.map((file, index) => (
         <div key={`${file.name}-${file.lastModified}-${index}`}>
@@ -86,14 +86,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           <button type="button" onClick={handleRemove} disabled={isUploading || uploadingRef.current}>
             {multiple ? 'Remove all' : 'Remove'}
           </button>
-          {uploadUrl ? (
-            <button
-              type="button"
-              onClick={handleUpload}
-              disabled={isUploading || uploadingRef.current}
-              aria-busy={isUploading}
-            >
-              {isUploading ? 'Uploading...' : 'Upload'}
+          {uploadUrl && (
+            <button type="button" onClick={handleUpload} disabled={isUploading}>
+              {isUploading ? "Uploading..." : "Upload"}
             </button>
           ) : null}
         </>
