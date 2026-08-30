@@ -1,4 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  UploadHttpError,
+  getFriendlyUploadErrorMessage,
+} from './mapUploadError.cjs';
+
+export { UploadHttpError, getFriendlyUploadErrorMessage };
 
 export interface UseFileUploadOptions {
   uploadUrl?: string;
@@ -140,20 +146,32 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
+        throw new UploadHttpError(response.status);
       }
 
-      setMessage("Upload successful.");
-      onUploadSuccess?.();
-      clearSelection();
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
+      if (isMountedRef.current) {
+        setMessage(successMessage);
+        if (clearOnSuccess) {
+          resetSelection();
+        }
+        onUploadSuccess?.();
+      }
+    } catch (uploadError) {
+      if (
+        uploadError instanceof Error &&
+        (uploadError.name === 'AbortError' || uploadError.name === 'CanceledError')
+      ) {
         return;
       }
-      const uploadError = err instanceof Error ? err.message : "Upload failed.";
-      setError(uploadError);
-      onUploadError?.(uploadError);
-      console.error("Error:", err);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      const uploadErrorMessage = getFriendlyUploadErrorMessage(uploadError);
+      setError(uploadErrorMessage);
+      onUploadError?.(uploadErrorMessage);
+      console.error('Upload error:', uploadError);
     } finally {
       setIsUploading(false);
       abortControllerRef.current = null;
