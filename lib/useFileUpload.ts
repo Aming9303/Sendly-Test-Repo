@@ -197,8 +197,8 @@ export const useFileUpload = ({
         }
         onUploadSuccess?.();
       }
-    } catch (uploadError) {
-      if (uploadError instanceof Error && uploadError.name === 'AbortError') {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
         return;
       }
 
@@ -206,10 +206,10 @@ export const useFileUpload = ({
         return;
       }
 
-      const uploadErrorMessage = getFriendlyUploadErrorMessage(uploadError);
+      const uploadErrorMessage = getFriendlyUploadErrorMessage(err);
       setError(uploadErrorMessage);
       onUploadError?.(uploadErrorMessage);
-      console.error('Upload error:', uploadError);
+      console.error('Upload error:', err);
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
