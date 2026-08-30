@@ -193,53 +193,55 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div>
-      <label htmlFor="file-upload-input">Select {multiple ? 'files' : 'a file'}</label>
+      <label htmlFor="file-upload-input">Choose file</label>
       <input
+        id="file-upload-input"
         ref={inputRef}
         type="file"
         accept={accept}
         multiple={multiple}
-        aria-describedby={`${errorId} ${statusId}`}
-        aria-invalid={Boolean(error)}
+        aria-label="Choose file"
+        aria-describedby={[
+          error ? 'file-upload-error' : null,
+          message ? 'file-upload-status' : null,
+        ]
+          .filter(Boolean)
+          .join(' ') || undefined}
         onChange={handleFileChange}
       />
       {error && (
-        <p role="alert" style={{ color: "red" }}>
+        <p id="file-upload-error" role="alert" style={{ color: 'red' }}>
           {error}
         </p>
       )}
-      {message && <p role="status">{message}</p>}
-      {selectedFiles.map((item) => (
-        <div key={item.id} style={{ display: 'inline-block', margin: 8 }}>
-          {item.previewUrl ? (
-            <img
-              src={item.previewUrl}
-              alt={item.file.name || 'preview'}
-              style={{ width: 100, height: 100, objectFit: 'cover', display: 'block' }}
-            />
-          ) : (
-            <div>{item.file.name}</div>
-          )}
-          {multiple && (
-            <button
-              type="button"
-              onClick={() => handleRemoveFile(item.id)}
-              disabled={isUploading}
-              aria-label={`Remove ${item.file.name}`}
-            >
-              Remove file
-            </button>
-          )}
-        </div>
-      ))}
+      {message && (
+        <p id="file-upload-status" role="status">
+          {message}
+        </p>
+      )}
+      {previews.map((url, idx) =>
+        url ? (
+          <img
+            key={idx}
+            src={url}
+            alt="preview"
+            style={{ width: 100, height: 100, objectFit: 'cover' }}
+          />
+        ) : null,
+      )}
       {selectedFiles.length > 0 && (
         <>
           <button type="button" onClick={handleRemove} disabled={isUploading}>
             Remove all
           </button>
           {uploadUrl && (
-            <button type="button" onClick={handleUpload} disabled={isUploading}>
-              {isUploading ? "Uploading..." : "Upload"}
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading}
+              aria-busy={isUploading}
+            >
+              {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           ) : null}
         </>

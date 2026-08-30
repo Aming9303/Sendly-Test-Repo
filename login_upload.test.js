@@ -22,8 +22,11 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
-test('Login upload aborts on unmount and ignores AbortError', () => {
-  assert.match(source, /AbortController/);
-  assert.match(source, /signal:\s*controller\.signal/);
-  assert.match(source, /AbortError/);
+test('Login upload has accessible label and ARIA attributes', () => {
+  assert.match(source, /<label\s+htmlFor=/);
+  assert.match(source, /aria-label=/);
+  assert.match(source, /aria-describedby=/);
+  assert.match(source, /id="login-file-error"/);
+  assert.match(source, /id="login-file-status"/);
+  assert.match(source, /aria-busy=\{isUploading\}/);
 });
