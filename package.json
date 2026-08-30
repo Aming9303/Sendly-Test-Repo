@@ -2,13 +2,6 @@
   "name": "sendly-test-repo",
   "private": true,
   "scripts": {
-    "test": "node --test upload_file.test.js login_upload.test.js components/file_upload.test.js",
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@types/node": "^26.2.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "typescript": "^7.0.2"
+    "test": "node --test"
   }
 }
