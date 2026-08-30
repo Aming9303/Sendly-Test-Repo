@@ -21,14 +21,13 @@ Webhook integration repo for GitHub agent bounty workflows (Sendly).
 npm test
 ```
 
-Runs the test suite with `node --test`. Node.js version is pinned to 20.19.5 in `.nvmrc`. Test suite covers:
-- `upload_file.test.js`
-- `login_upload.test.js`
-- `components/file_upload.test.js`
-- `file_upload_component.test.js`
-- `double_submit_race.test.js`
-- `use_file_upload_errors.test.js`
-- `test_suite_wiring.test.js`
+Runs all JavaScript unit tests (`npm run test:js`) and Python CLI tests (`npm run test:py`). Node.js version is pinned to 20.19.5 in .nvmrc.
+
+Individual test suites can be run separately:
+```bash
+npm run test:js   # Runs node --test suite
+npm run test:py   # Runs python unittest suite (test_fix.py)
+```
 
 ## Contributing
 

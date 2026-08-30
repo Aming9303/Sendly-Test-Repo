@@ -1,4 +1,11 @@
 node_modules/
 package-lock.json
 
-strix_runs/
+# Agent solution notes and dumps
+SOLUTION_ISSUE_*.md
+AGENTCLAW_*
+
+# Python
+__pycache__/
+*.pyc
+
