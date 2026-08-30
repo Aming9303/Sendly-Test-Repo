@@ -4,7 +4,6 @@ import { UploadHttpError, getFriendlyUploadErrorMessage } from './mapUploadError
 export interface UseFileUploadOptions { uploadUrl?: string; accept?: string; maxSizeMB?: number; multiple?: boolean; clearOnSuccess?: boolean; successMessage?: string; emptySelectionMessage?: string; onFilesSelected?: (files: File[]) => void; onUploadSuccess?: () => void; onUploadError?: (message: string) => void; }
 export interface UseFileUploadResult { file: File | null; selectedFiles: File[]; previews: string[]; isUploading: boolean; message: string | null; error: string | null; inputRef: React.RefObject<HTMLInputElement>; handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void; handleUpload: () => Promise<void>; handleRemove: () => void; }
 const isAcceptedFile = (file: File, accept?: string) => { if (!accept || accept.trim() === '') return true; const fileName = file.name.toLowerCase(); const fileType = file.type.toLowerCase(); return accept.split(',').some((rawToken) => { const token = rawToken.trim().toLowerCase(); if (token.startsWith('.')) return fileName.endsWith(token); if (token.endsWith('/*')) return fileType.startsWith(token.slice(0, -1)); return fileType === token; }); };
-
 export const useFileUpload = ({ uploadUrl, accept, maxSizeMB, multiple = false, clearOnSuccess = false, successMessage = 'Upload successful!', emptySelectionMessage = 'Please select a file before uploading.', onFilesSelected, onUploadSuccess, onUploadError }: UseFileUploadOptions): UseFileUploadResult => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]); const [previews, setPreviews] = useState<string[]>([]); const [isUploading, setIsUploading] = useState(false); const [message, setMessage] = useState<string | null>(null); const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null); const uploadInFlightRef = useRef(false); const abortControllerRef = useRef<AbortController | null>(null); const isMountedRef = useRef(true); const previewsRef = useRef<string[]>([]);
@@ -20,14 +19,14 @@ export const useFileUpload = ({ uploadUrl, accept, maxSizeMB, multiple = false, 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => { selectFiles(Array.from(event.target.files ?? [])); }, [selectFiles]);
   const handleUpload = useCallback(async () => {
     if (!uploadUrl) { setError('Upload URL is not configured.'); return; }
-    const normalizedUploadUrl = uploadUrl.trim();
-    if (!normalizedUploadUrl) { setError('Upload URL is not configured.'); return; }
+    const endpoint = uploadUrl?.trim() ?? '';
+    if (!endpoint) { setError('Upload URL is not configured.'); return; }
     if (selectedFiles.length === 0) { setError(emptySelectionMessage); return; }
     if (uploadInFlightRef.current) { return; }
     uploadInFlightRef.current = true; const controller = new AbortController(); abortControllerRef.current = controller; setIsUploading(true); setMessage(null); setError(null);
     try {
       const formData = new FormData(); const fieldName = multiple ? 'files' : 'file'; for (const file of selectedFiles) formData.append(fieldName, file, file.name);
-      const response = await fetch(normalizedUploadUrl, { method: 'POST', body: formData, signal: controller.signal }); if (!response.ok) throw new UploadHttpError(response.status);
+      const response = await fetch(endpoint, { method: 'POST', body: formData, signal: controller.signal }); if (!response.ok) throw new UploadHttpError(response.status);
       if (isMountedRef.current) { setMessage(successMessage); if (clearOnSuccess) resetSelection(); onUploadSuccess?.(); }
     } catch (uploadError) {
       if (uploadError instanceof Error && uploadError.name === 'AbortError') return; if (!isMountedRef.current) return;
