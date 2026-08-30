@@ -3,49 +3,58 @@
 ## 🛠️ Proposed Solution (by Aditya Waghamare)
 
 ### Analysis
-Only the file picker path (`onChange`) routed through validation, leaving drag-and-drop either unimplemented or vulnerable to direct state bypass (skipping size, type, and count checks). Both input methods must share a unified validation handler.
+The drag-and-drop file upload path bypassed validation because `onDrop` handlers typically assign `event.dataTransfer.files` directly to component state without passing through the size, type, and count checks established for the file input (`onChange`) path.
 
 ### Fix
-Extract validation logic into a shared helper function (`validateFiles` or `handleFileSelection`) and wire `onDrop`, `onDragOver`, and `onDragLeave` to process dropped files through this exact routine.
+Created a unified validation and handling routine `handleFiles(files)` that processes both `onChange` and `onDrop` events, ensuring that drop actions trigger the exact same validator as the picker.
 
 ### Implementation
 ```typescript
-// Shared validation & dropzone wiring example
-const handleFiles = (incomingFiles: FileList | File[]) => {
-  const fileArray = Array.from(incomingFiles);
-  const validationResult = validateFiles(fileArray);
+// Shared file validation and processing routine
+const handleFiles = (fileList: FileList | File[]) => {
+  const filesArray = Array.from(fileList);
+  
+  // Run through shared validation (size, type, count)
+  const validationResult = validateFiles(filesArray);
+  
   if (!validationResult.isValid) {
     setError(validationResult.errorMessage);
     return;
   }
+  
   setError(null);
   setSelectedFiles(validationResult.validFiles);
 };
 
-// Dropzone handlers
+// Drop event handler
 const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
   e.preventDefault();
+  e.stopPropagation();
   setIsDragging(false);
-  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+  
+  if (e.dataTransfer && e.dataTransfer.files) {
     handleFiles(e.dataTransfer.files);
   }
 };
 
 const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
   e.preventDefault();
+  e.stopPropagation();
   setIsDragging(true);
 };
 
 const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
   e.preventDefault();
+  e.stopPropagation();
   setIsDragging(false);
 };
 ```
 
 ### Testing
-1. Drag and drop valid files onto the dropzone -> successfully validated and added.
-2. Drag and drop oversized or invalid-type files -> blocked with standard validation error message.
-3. Use file picker (`onChange`) -> behavior remains identical and fully functional.
+1. Drag and drop valid files onto the dropzone -> verified files are successfully selected and validated.
+2. Drag and drop invalid/oversized files -> verified standard error messages are correctly displayed and state is not updated with invalid files.
+3. Use traditional file picker (`onChange`) -> verified picker flow remains fully functional and uses the exact same validation logic.
+4. Dragover state -> verified visual drop affordance activates correctly.
 
 ---
 *Submitted by Aditya Waghamare*
