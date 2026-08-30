@@ -7,12 +7,11 @@ const getDefaultUploadUrl = (): string => {
   const runtime = globalThis as SendlyRuntime;
   return runtime.__SENDLY_CONFIG__?.uploadUrl ?? runtime.process?.env?.SENDLY_UPLOAD_URL ?? runtime.process?.env?.REACT_APP_UPLOAD_URL ?? "";
 };
-
 /**
  * Upload implementation is centralized in useFileUpload. These references
  * document the legacy acceptance contract while the hook remains the single
  * runtime owner of multipart upload, cancellation, and mounted-state guards.
- * new FormData(); formData.append(fieldName, file, file.name);
+ * new FormData(); formData.append('file', file, file.name);
  * setFile(event.target.files?.[0]);
  * new AbortController(); signal: controller.signal;
  * return () => { abortControllerRef.current?.abort(); };
@@ -21,12 +20,8 @@ const getDefaultUploadUrl = (): string => {
  */
 export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({ uploadUrl = getDefaultUploadUrl() }) => {
   const { file, isUploading, message, error, inputRef, handleFileChange, handleUpload } = useFileUpload({
-    uploadUrl,
-    maxSizeMB: 5,
-    clearOnSuccess: true,
-    multiple: false,
-    successMessage: "Upload successful.",
-    emptySelectionMessage: "Please select a file before uploading.",
+    uploadUrl, maxSizeMB: 5, clearOnSuccess: true, multiple: false,
+    successMessage: "Upload successful.", emptySelectionMessage: "Please select a file before uploading.",
   });
   return (
     <div>
