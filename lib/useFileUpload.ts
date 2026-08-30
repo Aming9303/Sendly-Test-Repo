@@ -28,24 +28,13 @@ export interface UseFileUploadResult {
 }
 
 const isAcceptedFile = (file: File, accept?: string) => {
-  if (!accept || accept.trim() === '') {
-    return true;
-  }
-
+  if (!accept || accept.trim() === '') return true;
   const fileName = file.name.toLowerCase();
   const fileType = file.type.toLowerCase();
-
   return accept.split(',').some((rawToken) => {
     const token = rawToken.trim().toLowerCase();
-
-    if (token.startsWith('.')) {
-      return fileName.endsWith(token);
-    }
-
-    if (token.endsWith('/*')) {
-      return fileType.startsWith(token.slice(0, -1));
-    }
-
+    if (token.startsWith('.')) return fileName.endsWith(token);
+    if (token.endsWith('/*')) return fileType.startsWith(token.slice(0, -1));
     return fileType === token;
   });
 };
@@ -76,9 +65,7 @@ export const useFileUpload = ({
 
   const replacePreviews = useCallback((nextPreviews: string[]) => {
     previewsRef.current.forEach((url) => {
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
+      if (url) URL.revokeObjectURL(url);
     });
     previewsRef.current = nextPreviews;
     setPreviews(nextPreviews);
@@ -87,87 +74,65 @@ export const useFileUpload = ({
   const resetSelection = useCallback(() => {
     setSelectedFiles([]);
     replacePreviews([]);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
+    if (inputRef.current) inputRef.current.value = '';
   }, [replacePreviews]);
 
-  const selectFiles = useCallback(
-    (files: File[]) => {
-      const validFiles: File[] = [];
-      const errors: string[] = [];
-      const candidates = multiple ? files : files.slice(0, 1);
-      const maxBytes =
-        maxSizeMB !== undefined && Number.isFinite(maxSizeMB) && maxSizeMB > 0
-          ? maxSizeMB * 1024 * 1024
-          : null;
+  const selectFiles = useCallback((files: File[]) => {
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    const candidates = multiple ? files : files.slice(0, 1);
+    const maxBytes = maxSizeMB !== undefined && Number.isFinite(maxSizeMB) && maxSizeMB > 0
+      ? maxSizeMB * 1024 * 1024
+      : null;
 
-      if (!multiple && files.length > 1) {
-        errors.push('Only one file can be selected.');
+    if (!multiple && files.length > 1) errors.push('Only one file can be selected.');
+
+    for (const file of candidates) {
+      if (maxBytes !== null && file.size > maxBytes) {
+        errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
+        continue;
       }
-
-      for (const file of candidates) {
-        if (maxBytes !== null && file.size > maxBytes) {
-          errors.push(`File "${file.name}" exceeds ${maxSizeMB}MB limit.`);
-          continue;
-        }
-
-        if (!isAcceptedFile(file, accept)) {
-          errors.push(`File "${file.name}" is not an accepted file type.`);
-          continue;
-        }
-
-        validFiles.push(file);
+      if (!isAcceptedFile(file, accept)) {
+        errors.push(`File "${file.name}" is not an accepted file type.`);
+        continue;
       }
+      validFiles.push(file);
+    }
 
-      setMessage(null);
-
-      if (validFiles.length === 0) {
-        setError(errors.length > 0 ? errors.join(' ') : 'No valid files selected.');
-        resetSelection();
-        return;
-      }
-
-      const nextPreviews = validFiles.map((file) =>
-        file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
-      );
-
-      setError(errors.length > 0 ? errors.join(' ') : null);
-      setSelectedFiles(validFiles);
-      replacePreviews(nextPreviews);
-      onFilesSelected?.(validFiles);
-    },
-    [accept, maxSizeMB, multiple, onFilesSelected, replacePreviews, resetSelection],
-  );
-
-  const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      selectFiles(Array.from(event.target.files ?? []));
-    },
-    [selectFiles],
-  );
-
-  const handleUpload = useCallback(async () => {
-    const endpoint = uploadUrl?.trim() ?? '';
-
-    if (!endpoint) {
-      setError('Upload URL is not configured.');
+    setMessage(null);
+    if (validFiles.length === 0) {
+      setError(errors.length > 0 ? errors.join(' ') : 'No valid files selected.');
+      resetSelection();
       return;
     }
 
+    const nextPreviews = validFiles.map((file) =>
+      file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+    );
+    setError(errors.length > 0 ? errors.join(' ') : null);
+    setSelectedFiles(validFiles);
+    replacePreviews(nextPreviews);
+    onFilesSelected?.(validFiles);
+  }, [accept, maxSizeMB, multiple, onFilesSelected, replacePreviews, resetSelection]);
+
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    selectFiles(Array.from(event.target.files ?? []));
+  }, [selectFiles]);
+
+  const handleUpload = useCallback(async () => {
+    if (!uploadUrl) {
+      setError('Upload URL is not configured.');
+      return;
+    }
     if (selectedFiles.length === 0) {
       setError(emptySelectionMessage);
       return;
     }
-
-    if (uploadInFlightRef.current) {
-      return;
-    }
+    if (uploadInFlightRef.current) return;
 
     uploadInFlightRef.current = true;
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
     setIsUploading(true);
     setMessage(null);
     setError(null);
@@ -175,61 +140,37 @@ export const useFileUpload = ({
     try {
       const formData = new FormData();
       const fieldName = multiple ? 'files' : 'file';
-
       for (const file of selectedFiles) {
         formData.append(fieldName, file, file.name);
       }
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
       });
-
-      if (!response.ok) {
-        throw new UploadHttpError(response.status);
-      }
+      if (!response.ok) throw new UploadHttpError(response.status);
 
       if (isMountedRef.current) {
         setMessage(successMessage);
-        if (clearOnSuccess) {
-          resetSelection();
-        }
+        if (clearOnSuccess) resetSelection();
         onUploadSuccess?.();
       }
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-
-      if (!isMountedRef.current) {
-        return;
-      }
-
-      const uploadErrorMessage = getFriendlyUploadErrorMessage(err);
+    } catch (uploadError) {
+      if (uploadError instanceof Error && uploadError.name === 'AbortError') return;
+      if (!isMountedRef.current) return;
+      const uploadErrorMessage = getFriendlyUploadErrorMessage(uploadError);
       setError(uploadErrorMessage);
       onUploadError?.(uploadErrorMessage);
-      console.error('Upload error:', err);
+      console.error('Upload error:', uploadError);
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
         uploadInFlightRef.current = false;
-        if (isMountedRef.current) {
-          setIsUploading(false);
-        }
+        if (isMountedRef.current) setIsUploading(false);
       }
     }
-  }, [
-    clearOnSuccess,
-    emptySelectionMessage,
-    multiple,
-    onUploadError,
-    onUploadSuccess,
-    resetSelection,
-    selectedFiles,
-    successMessage,
-    uploadUrl,
-  ]);
+  }, [clearOnSuccess, emptySelectionMessage, multiple, onUploadError, onUploadSuccess, resetSelection, selectedFiles, successMessage, uploadUrl]);
 
   const handleRemove = useCallback(() => {
     resetSelection();
@@ -239,16 +180,13 @@ export const useFileUpload = ({
 
   useEffect(() => {
     isMountedRef.current = true;
-
     return () => {
       isMountedRef.current = false;
       uploadInFlightRef.current = false;
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
       previewsRef.current.forEach((url) => {
-        if (url) {
-          URL.revokeObjectURL(url);
-        }
+        if (url) URL.revokeObjectURL(url);
       });
       previewsRef.current = [];
     };
