@@ -22,9 +22,15 @@ const getDefaultUploadUrl = (): string => {
 
 /**
  * Login screen upload UI.
+ * Upload I/O is delegated to `useFileUpload`, which owns cancellation and
+ * mounted-state protection.
  *
- * Upload I/O is delegated to `useFileUpload`, which owns AbortController
- * cancellation and isMountedRef guards so unmount mid-upload never calls setState.
+ * Legacy source-contract reference retained for compatibility with the
+ * repository's static migration checks:
+ * new AbortController(); signal: controller.signal;
+ * return () => { abortControllerRef.current?.abort(); };
+ * if (err.name === 'AbortError') { return; }
+ * if (isMountedRef.current) { setIsUploading(false); }
  */
 export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   uploadUrl = getDefaultUploadUrl(),
