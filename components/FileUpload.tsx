@@ -1,3 +1,5 @@
+import React, { useId } from 'react';
+import { useFileUpload } from '../lib/useFileUpload';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface FileUploadProps {
@@ -10,6 +12,7 @@ export interface FileUploadProps {
   onUploadError?: (message: string) => void;
 }
 
+const DEFAULT_MAX_SIZE_MB = 10;
 export interface SelectedFile {
   id: string;
   file: File;
@@ -56,6 +59,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
   onUploadError,
 }) => {
+  const inputId = useId();
+  const errorId = `${inputId}-error`;
+  const statusId = `${inputId}-status`;
+
+  const {
+    selectedFiles,
+    previews,
+    isUploading,
+    message,
+    error,
+    inputRef,
+    handleFileChange,
+    handleUpload,
+    handleRemove,
+    uploadingRef,
+  } = useFileUpload({
+    accept,
+    maxSizeMB,
+    multiple,
+    uploadUrl,
+    onFilesSelected,
+    onUploadSuccess,
+    onUploadError,
+  });
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -239,6 +266,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         type="file"
         accept={accept}
         multiple={multiple}
+        aria-describedby={`${errorId} ${statusId}`}
         aria-describedby="file-upload-error file-upload-status"
         aria-invalid={Boolean(error)}
         onChange={handleFileChange}
@@ -249,6 +277,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         </p>
       )}
       {message && (
+        <p id={statusId} role="status">
+          {message}
+        </p>
+      )}
+      {selectedFiles.map((file, index) => (
+        <div key={`${file.name}-${file.lastModified}-${index}`}>
+          {previews[index] ? (
         <p id="file-upload-status" role="status">
           {message}
         </p>
@@ -267,6 +302,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       ))}
       {selectedFiles.length > 0 && (
         <>
+          <button type="button" onClick={handleRemove} disabled={isUploading || uploadingRef.current}>
+            {multiple ? 'Remove all' : 'Remove'}
           <button type="button" onClick={handleRemove} disabled={isUploading}>
             Remove all
           </button>
@@ -274,7 +311,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             <button
               type="button"
               onClick={handleUpload}
-              disabled={isUploading}
+              disabled={isUploading || uploadingRef.current}
               aria-busy={isUploading}
             >
               {isUploading ? 'Uploading...' : 'Upload'}

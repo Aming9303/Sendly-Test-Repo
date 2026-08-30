@@ -26,6 +26,7 @@ export interface UseFileUploadReturn {
   handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleUpload: () => Promise<void>;
   handleRemove: () => void;
+  uploadingRef: React.MutableRefObject<boolean>;
   clearSelection: () => void;
 }
 
@@ -76,6 +77,7 @@ export const useFileUpload = ({
   const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadingRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const file = selectedFiles[0] ?? null;
@@ -182,6 +184,14 @@ export const useFileUpload = ({
       return;
     }
 
+    if (uploadingRef.current) {
+      return;
+    }
+
+    uploadingRef.current = true;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     if (isUploading) {
       return;
     }
@@ -238,6 +248,13 @@ export const useFileUpload = ({
       onUploadError?.(uploadErrorMessage);
       console.error('Upload error:', uploadError);
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        uploadingRef.current = false;
+        if (isMountedRef.current) {
+          setIsUploading(false);
+        }
+      }
       setIsUploading(false);
       abortControllerRef.current = null;
     }
@@ -261,6 +278,11 @@ export const useFileUpload = ({
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
+      uploadingRef.current = false;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+      previewsRef.current.forEach((url) => {
       previews.forEach((url) => {
         if (url) {
           URL.revokeObjectURL(url);
@@ -283,6 +305,7 @@ export const useFileUpload = ({
     handleFileChange,
     handleUpload,
     handleRemove,
+    uploadingRef,
     clearSelection,
   };
 }

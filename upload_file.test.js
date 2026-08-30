@@ -28,6 +28,16 @@ test('shared uploader aborts on unmount and ignores AbortError', () => {
 test('consolidated upload source has no hardcoded endpoint', () => {
   assert.doesNotMatch(wrapperSource, /https?:\/\//);
   assert.doesNotMatch(source, /fetch\(\s*['"]https?:\/\//);
+  assert.doesNotMatch(source, /\bfetch\s*\(/);
+});
+
+test('upload handler uses a synchronous ref guard against re-entry in the hook', () => {
+  assert.match(hookSource, /uploadingRef/);
+  assert.match(
+    hookSource,
+    /if \(uploadingRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadingRef\.current = true;/,
+  );
+  assert.match(hookSource, /finally \{[\s\S]*uploadingRef\.current = false;/);
   assert.doesNotMatch(source, /https:\/\/example\.com/);
 });
 
