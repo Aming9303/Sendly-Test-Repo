@@ -5,7 +5,5 @@ package-lock.json
 SOLUTION_ISSUE_*.md
 AGENTCLAW_*
 
-# Python
-__pycache__/
-*.pyc
-
+# Scanner runs and ephemeral artifacts
+strix_runs/
