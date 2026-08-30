@@ -48,3 +48,9 @@ test('orphan upload_file_fixed.tsx and CorrectedUpload are not present in the re
     assert.doesNotMatch(src, /CorrectedUpload/, 'CorrectedUpload must not appear in canonical sources');
   }
 });
+
+test('upload aborts on unmount and ignores AbortError', () => {
+  assert.match(source, /AbortController/);
+  assert.match(source, /signal:\s*controller\.signal/);
+  assert.match(source, /AbortError/);
+});
