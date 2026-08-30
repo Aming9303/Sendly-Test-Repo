@@ -1,6 +1,2 @@
 node_modules/
-strix_runs/
-
-# Agent solution notes and dumps
-SOLUTION_ISSUE_*.md
-AGENTCLAW_*
+package-lock.json
