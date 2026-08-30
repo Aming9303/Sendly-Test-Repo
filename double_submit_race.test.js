@@ -27,6 +27,7 @@ test('upload_file.tsx delegates upload re-entry guard to Login/useFileUpload', (
 
 test('FileUpload.tsx wires uploadingRef into disabled via useFileUpload', () => {
   const source = readFileSync('components/FileUpload.tsx', 'utf8');
+  const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
   assert.match(source, /useFileUpload\s*\(/);
   assert.match(source, /disabled=\{isUploading \|\| uploadingRef\.current\}/);
   assert.match(hookSource, /const uploadingRef = useRef\(false\)/);
