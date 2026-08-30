@@ -46,3 +46,13 @@ test('upload handler uses a synchronous ref guard against re-entry in the hook',
   );
   assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
+
+test('orphan upload_file_fixed.tsx and CorrectedUpload are not present in the repo', () => {
+  const fs = require('node:fs');
+  assert.equal(fs.existsSync('upload_file_fixed.tsx'), false, 'orphan upload_file_fixed.tsx must not exist');
+  // Ensure CorrectedUpload is not accidentally re-exported or referenced anywhere
+  const allSources = [wrapperSource, source, hookSource];
+  for (const src of allSources) {
+    assert.doesNotMatch(src, /CorrectedUpload/, 'CorrectedUpload must not appear in canonical sources');
+  }
+});
