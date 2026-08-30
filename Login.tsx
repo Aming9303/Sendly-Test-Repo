@@ -1,84 +1,36 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef } from "react";
+import { useFileUpload } from "./lib/useFileUpload";
 
-export const IncorrectUpload = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export interface LoginUploadProps {
+  endpoint?: string;
+  maxSizeMB?: number;
+}
+
+export const IncorrectUpload: React.FC<LoginUploadProps> = ({
+  endpoint = "https://example.com",
+  maxSizeMB = 5,
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const {
+    selectedFiles,
+    isUploading,
+    statusMessage,
+    errorMessage,
+    handleFileChange: onFileChange,
+    uploadFiles,
+  } = useFileUpload({
+    endpoint,
+    maxSizeMB,
+    multiple: false,
+  });
 
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
+  const file = selectedFiles[0] ?? null;
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(event.target.files?.[0] ?? null);
-    setMessage(null);
-    setError(null);
+    onFileChange(event);
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setError("Please select a file before uploading.");
-      return;
-    }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setIsUploading(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
-
-      const response = await fetch("https://example.com", {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        if (response.status >= 400 && response.status < 500) {
-          throw new Error("Client error: request could not be processed. Please check your file and try again.");
-        } else if (response.status >= 500) {
-          throw new Error("Server error: something went wrong on our end. Please try again later.");
-        } else {
-          throw new Error("Upload failed. Please try again.");
-        }
-      }
-
-      setMessage("Upload successful.");
-      setFile(null);
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
-    } catch (err) {
-      console.error("Error:", err);
-      let userMessage = "Upload failed. Please check your connection and try again.";
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        userMessage = "You appear to be offline. Please check your internet connection and try again.";
-      } else if (err instanceof TypeError && /failed to fetch|network|fetch/i.test(err.message)) {
-        userMessage = "Network error: unable to reach the server. Please check your connection and try again.";
-      } else if (err instanceof Error) {
-        userMessage = err.message;
-      }
-      setError(userMessage);
-    } finally {
-      if (!controller.signal.aborted) {
-        setIsUploading(false);
-      }
-    }
+    await uploadFiles();
   };
 
   return (
@@ -90,8 +42,8 @@ export const IncorrectUpload = () => {
         type="file"
         aria-label="Choose file"
         aria-describedby={[
-          error ? "login-file-error" : null,
-          message ? "login-file-status" : null,
+          errorMessage ? "login-file-error" : null,
+          statusMessage ? "login-file-status" : null,
         ]
           .filter(Boolean)
           .join(" ") || undefined}
@@ -105,14 +57,14 @@ export const IncorrectUpload = () => {
       >
         {isUploading ? "Uploading..." : "Upload"}
       </button>
-      {message && (
+      {statusMessage && (
         <p id="login-file-status" role="status">
-          {message}
+          {statusMessage}
         </p>
       )}
-      {error && (
+      {errorMessage && (
         <p id="login-file-error" role="alert">
-          {error}
+          {errorMessage}
         </p>
       )}
     </div>
