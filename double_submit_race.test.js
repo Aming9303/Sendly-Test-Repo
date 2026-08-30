@@ -25,10 +25,11 @@ test('upload_file.tsx delegates upload re-entry guard to Login/useFileUpload', (
   assert.match(loginSource, /disabled=\{!file \|\| isUploading \|\| uploadingRef\.current\}/);
 });
 
-test('FileUpload.tsx wires uploadingRef into disabled via useFileUpload', () => {
+test('FileUpload.tsx delegates upload re-entry guard to useFileUpload', () => {
   const source = readFileSync('components/FileUpload.tsx', 'utf8');
   const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
   assert.match(source, /useFileUpload\s*\(/);
-  assert.match(source, /disabled=\{isUploading \|\| uploadingRef\.current\}/);
-  assert.match(hookSource, /const uploadingRef = useRef\(false\)/);
+  assert.doesNotMatch(source, /uploadingRef\s*=\s*useRef/);
+  assert.match(hookSource, /uploadInFlightRef/);
+  assert.match(source, /disabled=\{isUploading\}/);
 });
