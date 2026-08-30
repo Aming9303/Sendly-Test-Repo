@@ -1,54 +1,98 @@
-import React, { useRef, useState } from "react";
+import React from "react";
+import { useFileUpload } from "./lib/useFileUpload";
 
-export const IncorrectUpload = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export interface IncorrectUploadProps {
+  uploadUrl?: string;
+  maxSizeMB?: number;
+}
+
+export const IncorrectUpload: React.FC<LoginUploadProps> = ({
+  endpoint = "https://example.com",
+  maxSizeMB = 5,
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const {
+    selectedFiles,
+    isUploading,
+    statusMessage,
+    errorMessage,
+    handleFileChange: onFileChange,
+    uploadFiles,
+  } = useFileUpload({
+    endpoint,
+    maxSizeMB,
+    multiple: false,
+  });
 
+  const file = selectedFiles[0] ?? null;
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(event.target.files?.[0] ?? null);
-    setMessage(null);
-    setError(null);
+    onFileChange(event);
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setError("Please select a file before uploading.");
-      return;
-    }
-
-    setIsUploading(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
-
-      const response = await fetch("https://example.com", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
-
-      setMessage("Upload successful.");
-      setFile(null);
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Upload failed.";
-      setError(message);
-      console.error("Error:", err);
-    } finally {
-      setIsUploading(false);
-    }
+    await uploadFiles();
   };
+
+const getDefaultUploadUrl = (): string => {
+  const runtime = globalThis as SendlyRuntime;
+  return (
+    <div>
+      <label htmlFor="login-file-input">Choose file</label>
+      <input
+        id="login-file-input"
+        ref={inputRef}
+        type="file"
+        aria-label="Choose file"
+        aria-describedby={[
+          errorMessage ? "login-file-error" : null,
+          statusMessage ? "login-file-status" : null,
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined}
+        onChange={handleFileChange}
+      />
+      <button
+        type="button"
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        aria-busy={isUploading}
+      >
+        {isUploading ? "Uploading..." : "Upload"}
+      </button>
+      {statusMessage && (
+        <p id="login-file-status" role="status">
+          {statusMessage}
+        </p>
+      )}
+      {errorMessage && (
+        <p id="login-file-error" role="alert">
+          {errorMessage}
+        </p>
+      )}
+    </div>
+  );
+};
+
+export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
+  uploadUrl = getDefaultUploadUrl(),
+  maxSizeMB = 5,
+}) => {
+  const {
+    file,
+    isUploading,
+    message,
+    error,
+    inputRef,
+    handleFileChange,
+    handleUpload,
+  } = useFileUpload({
+    uploadUrl,
+    maxSizeMB: 5,
+    clearOnSuccess: true,
+    multiple: false,
+    successMessage: "Upload successful.",
+    emptySelectionMessage: "Please select a file before uploading.",
+  });
 
   return (
     <div>

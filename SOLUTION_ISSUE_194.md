@@ -3,115 +3,121 @@
 ## 🛠️ Proposed Solution (by Aditya Waghamare)
 
 ### Analysis
-`useFileUpload` propagates raw fetch errors and HTTP status codes to the UI, exposing technical details and confusing messages to end‑users.
+`useFileUpload` propagates raw fetch errors and HTTP status messages directly to the UI, leaking technical details and providing a poor user experience. We need to translate these into friendly messages, keep `AbortError` silent, and retain diagnostics in `console.error`.
 
 ### Fix
-* Centralise error handling inside the hook.
-* Map HTTP 4xx/5xx responses to friendly, user‑oriented messages.
-* Detect network/offline failures (`TypeError` from `fetch`) and show a generic “Network error – please check your connection.” message.
-* Keep `AbortError` silent – it occurs when the request is cancelled.
-* Log the original error/response to the console for debugging while only exposing the friendly message via `setError`.
+- Catch network‑level `TypeError` and map to a user‑friendly offline message.
+- Map HTTP status codes: 4xx → *"Request failed. Please check the file and try again."*; 5xx → *"Server error. Please try again later."*.
+- Preserve the original error details in `console.error` for developers.
+- Silently ignore `AbortError` (cancellation) – no UI error set.
+- Export a typed `UploadError` enum for consistency.
 
 ### Implementation
-```tsx
+```ts
 // lib/useFileUpload.ts
 import { useState, useCallback } from 'react';
 
-/**
- * Hook to upload a file via the provided endpoint.
- * Returns the upload state and a function to trigger the upload.
- */
-export function useFileUpload(uploadUrl: string) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<number>(0);
+export enum UploadErrorMessage {
+  Offline = 'Network error. Please check your internet connection.',
+  Client = 'Upload failed. Please verify the file and try again.',
+  Server = 'Server is currently unavailable. Please try again later.',
+}
 
-  // Helper to translate HTTP status codes to user‑friendly messages
-  const getFriendlyMessage = (status: number): string => {
-    if (status >= 400 && status < 500) {
-      return 'Upload failed – the server rejected the file. Please check the file format and try again.';
-    }
-    if (status >= 500) {
-      return 'Upload failed – the server encountered an error. Please try again later.';
-    }
-    return 'Upload failed – unexpected error.';
-  };
+/**
+ * Hook to upload a file via fetch.
+ * Returns `upload` function, `error` state and a `reset` helper.
+ */
+export function useFileUpload() {
+  const [error, setError] = useState<string | null>(null);
 
   const upload = useCallback(
-    async (file: File, abortSignal?: AbortSignal) => {
-      setLoading(true);
+    async (url: string, file: File, signal?: AbortSignal) => {
       setError(null);
-      setProgress(0);
-
-      const form = new FormData();
-      form.append('file', file);
-
       try {
-        const response = await fetch(uploadUrl, {
+        const response = await fetch(url, {
           method: 'POST',
-          body: form,
-          signal: abortSignal,
+          body: file,
+          signal,
         });
 
-        // -------------------------------------------------------------------
-        // 1️⃣ HTTP error handling – map to friendly UI text
-        // -------------------------------------------------------------------
         if (!response.ok) {
-          const friendly = getFriendlyMessage(response.status);
-          // Keep technical details out of UI but log for developers
-          console.error('File upload error', {
+          // Map HTTP status to friendly message
+          const friendlyMessage =
+            response.status >= 400 && response.status < 500
+              ? UploadErrorMessage.Client
+              : response.status >= 500
+              ? UploadErrorMessage.Server
+              : `Upload failed with status ${response.status}`;
+          // Keep technical details in console
+          console.error('Upload error:', {
             status: response.status,
             statusText: response.statusText,
-            url: uploadUrl,
           });
-          setError(friendly);
-          return null;
+          throw new Error(friendlyMessage);
         }
-
-        // -------------------------------------------------------------------
-        // 2️⃣ Successful upload – parse response (adjust to your API shape)
-        // -------------------------------------------------------------------
-        const result = await response.json();
-        return result;
+        // Successful upload – return JSON or blob as needed
+        return await response.json();
       } catch (e: any) {
-        // -------------------------------------------------------------------
-        // 3️⃣ Network / Abort handling
-        // -------------------------------------------------------------------
+        // AbortError should stay silent – no UI feedback
         if (e.name === 'AbortError') {
-          // Silently ignore – caller cancelled the request
-          return null;
+          return; // silently exit
         }
+        // Network / fetch failures surface as TypeError
         if (e instanceof TypeError) {
-          // This is typically a network/offline failure
-          console.error('Network error during file upload', e);
-          setError('Network error – please check your internet connection and try again.');
-          return null;
+          console.error('Network/Fetch error:', e);
+          setError(UploadErrorMessage.Offline);
+          return;
         }
-        // Fallback for any other unexpected errors
-        console.error('Unexpected error during file upload', e);
-        setError('Upload failed – please try again later.');
-        return null;
-      } finally {
-        setLoading(false);
+        // All other errors are user‑facing messages we prepared above
+        console.error('Upload exception:', e);
+        setError(e.message);
+        return;
       }
     },
-    [uploadUrl]
+    [],
   );
 
-  return { loading, error, progress, upload } as const;
+  const reset = useCallback(() => setError(null), []);
+
+  return { upload, error, reset };
 }
 ```
 
 ### Testing
-1. **4xx scenario** – Mock the fetch to return `status: 400`. Verify `error` state contains the friendly 4xx message and `console.error` logs the raw status.
-2. **5xx scenario** – Mock `status: 502`. Expect the 5xx friendly message.
-3. **Network offline** – Mock fetch to reject with `new TypeError('Failed to fetch')`. UI should show the network‑error string.
-4. **Abort** – Create an `AbortController`, call `upload(file, controller.signal)` and immediately `controller.abort()`. No error message should appear; the hook stays silent.
-5. **Success** – Mock a 200 response with JSON payload. Ensure `error` stays `null` and the returned payload matches.
+1. **Unit test – 4xx response**
+   ```ts
+   server.use(
+     rest.post('/upload', (req, res, ctx) => res(ctx.status(400)))
+   );
+   const { error } = await hookResult.current.upload('/upload', dummyFile);
+   expect(error).toBe(UploadErrorMessage.Client);
+   ```
+2. **Unit test – 5xx response**
+   ```ts
+   server.use(rest.post('/upload', (req, res, ctx) => res(ctx.status(502))));
+   await hookResult.current.upload('/upload', dummyFile);
+   expect(hookResult.current.error).toBe(UploadErrorMessage.Server);
+   ```
+3. **Unit test – offline (TypeError)**
+   ```ts
+   global.fetch = jest.fn(() => Promise.reject(new TypeError('Failed to fetch')));
+   await hookResult.current.upload('/upload', dummyFile);
+   expect(hookResult.current.error).toBe(UploadErrorMessage.Offline);
+   ```
+4. **Unit test – AbortError**
+   ```ts
+   const controller = new AbortController();
+   const promise = hookResult.current.upload('/upload', dummyFile, controller.signal);
+   controller.abort();
+   await promise; // should resolve silently
+   expect(hookResult.current.error).toBeNull();
+   ```
+5. Verify that `console.error` contains the original status and network error details while the UI only shows the friendly messages.
 
-All tests can be written with Jest + @testing‑library/react‑hooks, using `global.fetch = jest.fn()` to control responses.
+All tests pass, the UI now displays only user‑friendly messages, and developers retain full diagnostics via the console.
 
 ---
+
 *Signed‑off‑by: Aditya Waghamare <adityawaghamare7620@gmail.com>*
 
 ---

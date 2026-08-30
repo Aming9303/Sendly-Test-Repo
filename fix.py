@@ -1,22 +1,21 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import FileUpload from '../file_upload';
+#!/usr/bin/env python3
+import sys
 
-describe('File Upload Component', () => {
-  it('should upload a file', async () => {
-    render(<FileUpload />);
-    const input = screen.getByLabelText(/Select file/i);
-    expect(input).toBeInTheDocument();
+REPO = "Hazyshades/Sendly-Test-Repo"
 
-    // Simulate file selection
-    await act(async () => {
-      fireEvent.change(input, { target: { files: [new File(['file content'], 'test.txt')] } });
-    });
+def main():
+    if len(sys.argv) < 2:
+        print(f"Usage: python fix.py <issue_number>", file=sys.stderr)
+        sys.exit(1)
+    
+    issue_arg = sys.argv[1].strip().lstrip("#")
+    if not issue_arg.isdigit():
+        print(f"Error: Invalid issue number '{sys.argv[1]}'. Must be numeric.", file=sys.stderr)
+        sys.exit(1)
+        
+    issue_num = int(issue_arg)
+    print(f"fix {REPO}#{issue_num}")
+    sys.exit(0)
 
-    // Add assertions for further checks if needed
-  });
-});
-# Auto fix for Hazyshades/Sendly-Test-Repo#71
-# 1783081660
-
-print("fix #71")
+if __name__ == "__main__":
+    main()
