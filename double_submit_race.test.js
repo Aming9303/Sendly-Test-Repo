@@ -6,30 +6,27 @@ const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
 
 test('Login.tsx wires uploadingRef into disabled while delegating to useFileUpload', () => {
   const source = readFileSync('Login.tsx', 'utf8');
-  assert.match(source, /useFileUpload\s*\(/);
-  assert.match(source, /uploadingRef/);
-  assert.match(source, /disabled=\{!file \|\| isUploading \|\| uploadingRef\.current\}/);
-  assert.match(hookSource, /const uploadingRef = useRef\(false\)/);
-  assert.match(
-    hookSource,
-    /if \(uploadingRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadingRef\.current = true;/,
-  );
+  assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
+  assert.match(source, /if\s*\(uploadInFlightRef\.current\)/);
+  assert.match(source, /uploadInFlightRef\.current\s*=\s*true/);
+  assert.match(source, /uploadInFlightRef\.current\s*=\s*false/);
+  assert.match(source, /disabled=\{!file\s*\|\|\s*isUploading\}/);
 });
 
-test('upload_file.tsx delegates upload re-entry guard to Login/useFileUpload', () => {
-  const wrapperSource = readFileSync('upload_file.tsx', 'utf8');
-  const loginSource = readFileSync('Login.tsx', 'utf8');
-  assert.match(wrapperSource, /export \{ IncorrectUpload \} from ['"]\.\/Login['"]/);
-  assert.doesNotMatch(wrapperSource, /uploadingRef\s*=\s*useRef/);
-  assert.match(hookSource, /const uploadingRef = useRef\(false\)/);
-  assert.match(loginSource, /disabled=\{!file \|\| isUploading \|\| uploadingRef\.current\}/);
+test('upload_file.tsx has a synchronous ref guard to prevent re-entry', () => {
+  const source = readFileSync('upload_file.tsx', 'utf8');
+  assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
+  assert.match(source, /if\s*\(uploadInFlightRef\.current\)/);
+  assert.match(source, /uploadInFlightRef\.current\s*=\s*true/);
+  assert.match(source, /uploadInFlightRef\.current\s*=\s*false/);
+  assert.match(source, /disabled=\{!file\s*\|\|\s*isUploading\}/);
 });
 
 test('FileUpload.tsx delegates upload re-entry guard to useFileUpload', () => {
   const source = readFileSync('components/FileUpload.tsx', 'utf8');
-  const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
-  assert.match(source, /useFileUpload\s*\(/);
-  assert.doesNotMatch(source, /uploadingRef\s*=\s*useRef/);
-  assert.match(hookSource, /uploadInFlightRef/);
+  assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
+  assert.match(source, /if\s*\(uploadInFlightRef\.current\)/);
+  assert.match(source, /uploadInFlightRef\.current\s*=\s*true/);
+  assert.match(source, /uploadInFlightRef\.current\s*=\s*false/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
