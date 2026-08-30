@@ -133,8 +133,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       return;
     }
 
-    if (selectedFiles.length === 0) {
-      setError('Please select a file before uploading.');
+    if (selectedFiles.length === 0 || isUploading) {
+      if (selectedFiles.length === 0) {
+        setError('Please select a file before uploading.');
+      }
       return;
     }
 
@@ -191,7 +193,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         setIsUploading(false);
       }
     }
-  }, [multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+  }, [isUploading, multiple, onUploadError, onUploadSuccess, selectedFiles, uploadUrl]);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      handleUpload();
+    },
+    [handleUpload],
+  );
 
   const handleRemove = useCallback(() => {
     selectedFiles.forEach((item) => {
@@ -236,17 +246,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [selectedFiles]);
 
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      style={{
-        border: isDragging ? '2px dashed #0066cc' : '1px solid #ccc',
-        backgroundColor: isDragging ? '#f0f8ff' : 'transparent',
-        padding: '16px',
-        borderRadius: '4px',
-      }}
-    >
+    <form onSubmit={handleSubmit}>
       <input
         id="file-upload-input"
         ref={inputRef}
@@ -288,17 +288,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             Remove all
           </button>
           {uploadUrl && (
-            <button
-              type="button"
-              onClick={handleUpload}
-              disabled={isUploading}
-              aria-busy={isUploading}
-            >
+            <button type="submit" disabled={isUploading}>
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
           ) : null}
         </>
       )}
-    </div>
+    </form>
   );
 };
