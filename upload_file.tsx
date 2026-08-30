@@ -49,7 +49,13 @@ export const IncorrectUpload = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
+        if (response.status >= 400 && response.status < 500) {
+          throw new Error('Client error: request could not be processed. Please check your file and try again.');
+        } else if (response.status >= 500) {
+          throw new Error('Server error: something went wrong on our end. Please try again later.');
+        } else {
+          throw new Error('Upload failed. Please try again.');
+        }
       }
 
       setMessage('Upload successful!');
@@ -57,13 +63,17 @@ export const IncorrectUpload = () => {
       if (inputRef.current) {
         inputRef.current.value = '';
       }
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || controller.signal.aborted) {
-        return;
-      }
-      const msg = err instanceof Error ? err.message : 'File upload failed';
-      setError(msg);
+    } catch (err) {
       console.error('Error:', err);
+      let msg = 'File upload failed';
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        msg = 'You appear to be offline. Please check your internet connection and try again.';
+      } else if (err instanceof TypeError && /failed to fetch|network|fetch/i.test(err.message)) {
+        msg = 'Network error: unable to reach the server. Please check your connection and try again.';
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       if (!controller.signal.aborted) {
         setIsUploading(false);

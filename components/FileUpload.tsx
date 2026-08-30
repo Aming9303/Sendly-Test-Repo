@@ -129,19 +129,29 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
+        if (response.status >= 400 && response.status < 500) {
+          throw new Error('Client error: upload could not be processed. Please check your files and try again.');
+        } else if (response.status >= 500) {
+          throw new Error('Server error: upload failed due to a server issue. Please try again later.');
+        } else {
+          throw new Error('Upload failed. Please try again.');
+        }
       }
 
       setMessage('Upload successful!');
       onUploadSuccess?.();
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || controller.signal.aborted) {
-        return;
+    } catch (err) {
+      console.error('Upload error:', err);
+      let uploadError = 'Upload failed. Please check your connection and try again.';
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        uploadError = 'You appear to be offline. Please check your internet connection and try again.';
+      } else if (err instanceof TypeError && /failed to fetch|network|fetch/i.test(err.message)) {
+        uploadError = 'Network error: unable to reach the server. Please check your connection and try again.';
+      } else if (err instanceof Error) {
+        uploadError = err.message;
       }
-      const uploadError = err instanceof Error ? err.message : 'Upload failed.';
       setError(uploadError);
       onUploadError?.(uploadError);
-      console.error('Upload error:', err);
     } finally {
       if (!controller.signal.aborted) {
         setIsUploading(false);

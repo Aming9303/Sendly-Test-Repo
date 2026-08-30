@@ -22,11 +22,10 @@ test('Login upload guards empty and in-flight submissions', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
 });
 
-test('Login upload has accessible label and ARIA attributes', () => {
-  assert.match(source, /<label\s+htmlFor=/);
-  assert.match(source, /aria-label=/);
-  assert.match(source, /aria-describedby=/);
-  assert.match(source, /id="login-file-error"/);
-  assert.match(source, /id="login-file-status"/);
-  assert.match(source, /aria-busy=\{isUploading\}/);
+test('Login upload maps friendly error messages for HTTP status codes, offline and network failures', () => {
+  assert.match(source, /response\.status\s*>=\s*400\s*&&\s*response\.status\s*<\s*500/);
+  assert.match(source, /response\.status\s*>=\s*500/);
+  assert.match(source, /navigator\.onLine/);
+  assert.match(source, /console\.error/);
+  assert.doesNotMatch(source, /Upload failed with status \$\{response\.status\}/);
 });

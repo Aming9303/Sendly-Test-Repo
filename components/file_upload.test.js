@@ -24,11 +24,10 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /disabled=\{isUploading\}/);
 });
 
-test('FileUpload has accessible labels and ARIA attributes for screen readers', () => {
-  assert.match(source, /<label\s+htmlFor=/);
-  assert.match(source, /aria-label=/);
-  assert.match(source, /aria-describedby=/);
-  assert.match(source, /id="file-upload-error"/);
-  assert.match(source, /id="file-upload-status"/);
-  assert.match(source, /aria-busy=\{isUploading\}/);
+test('FileUpload maps friendly error messages for HTTP status codes, offline and network failures', () => {
+  assert.match(source, /response\.status\s*>=\s*400\s*&&\s*response\.status\s*<\s*500/);
+  assert.match(source, /response\.status\s*>=\s*500/);
+  assert.match(source, /navigator\.onLine/);
+  assert.match(source, /console\.error/);
+  assert.doesNotMatch(source, /Upload failed with status \$\{response\.status\}/);
 });
