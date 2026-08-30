@@ -22,13 +22,11 @@ test('upload_file.tsx delegates upload re-entry guard to Login/useFileUpload', (
   assert.match(hookSource, /uploadInFlightRef/);
 });
 
-test('FileUpload.tsx still owns its synchronous ref guard until migrated to the hook', () => {
+test('FileUpload.tsx delegates upload re-entry guard to useFileUpload', () => {
   const source = readFileSync('components/FileUpload.tsx', 'utf8');
-  assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
-  assert.match(
-    source,
-    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
-  );
-  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
+  const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
+  assert.match(source, /useFileUpload\s*\(/);
+  assert.doesNotMatch(source, /uploadingRef\s*=\s*useRef/);
+  assert.match(hookSource, /uploadInFlightRef/);
   assert.match(source, /disabled=\{isUploading\}/);
 });
