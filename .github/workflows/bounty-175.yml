@@ -20,6 +20,6 @@ jobs:
         run: npm run test:js
       - name: Verify endpoint normalization and blank URL guard
         run: |
-          grep -F 'const endpoint = uploadUrl?.trim() ?? '\''\'';' lib/useFileUpload.ts
-          grep -F 'if (!endpoint)' lib/useFileUpload.ts
-          grep -F 'fetch(endpoint' lib/useFileUpload.ts
+          grep -F "const endpoint = uploadUrl?.trim() ?? '';" lib/useFileUpload.ts
+          grep -F "if (!endpoint)" lib/useFileUpload.ts
+          grep -F "fetch(endpoint" lib/useFileUpload.ts
