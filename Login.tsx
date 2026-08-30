@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { useFileUpload } from "./lib/useFileUpload";
 
 export interface IncorrectUploadProps {
@@ -10,7 +10,7 @@ type SendlyRuntime = typeof globalThis & {
   process?: { env?: { SENDLY_UPLOAD_URL?: string; REACT_APP_UPLOAD_URL?: string } };
 };
 
-const getDefaultUploadUrl = (): string => {
+const getDefaultUploadUrl = () => {
   const runtime = globalThis as SendlyRuntime;
   return (
     runtime.__SENDLY_CONFIG__?.uploadUrl ??
@@ -20,32 +20,86 @@ const getDefaultUploadUrl = (): string => {
   );
 };
 
-/**
- * Login screen upload UI.
- *
- * Upload I/O is delegated to `useFileUpload`, which owns AbortController
- * cancellation and isMountedRef guards so unmount mid-upload never calls setState.
- */
 export const IncorrectUpload: React.FC<IncorrectUploadProps> = ({
   uploadUrl = getDefaultUploadUrl(),
+  maxSizeMB = 5,
 }) => {
-  const {
-    file,
-    isUploading,
-    message,
-    error,
-    inputRef,
-    handleFileChange,
-    handleUpload,
-    uploadingRef,
-  } = useFileUpload({
-    uploadUrl,
-    maxSizeMB: 5,
-    clearOnSuccess: true,
-    multiple: false,
-    successMessage: "Upload successful.",
-    emptySelectionMessage: "Please select a file before uploading.",
-  });
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
+
+  useFileUpload({ uploadUrl, maxSizeMB });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null;
+
+    if (selectedFile && selectedFile.size > maxSizeMB * 1024 * 1024) {
+      setError(`The maximum size is ${maxSizeMB} MB`);
+      setFile(null);
+      event.target.value = "";
+      return;
+    }
+
+    setFile(selectedFile);
+    setMessage(null);
+    setError(null);
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      setError("Please select a file before uploading.");
+      return;
+    }
+
+    if (uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
+
+    setIsUploading(true);
+    setMessage(null);
+    setError(null);
+
+    const endpoint = uploadUrl.trim();
+
+    if (!endpoint) {
+      setError("Upload URL is not configured.");
+      uploadInFlightRef.current = false;
+      setIsUploading(false);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      setMessage("Upload successful.");
+      setFile(null);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      setError(message);
+      console.error("Error:", err);
+    } finally {
+      uploadInFlightRef.current = false;
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div>
