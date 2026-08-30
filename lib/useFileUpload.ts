@@ -148,7 +148,9 @@ export const useFileUpload = ({
   );
 
   const handleUpload = useCallback(async () => {
-    if (!uploadUrl) {
+    const endpoint = uploadUrl?.trim() ?? '';
+
+    if (!endpoint) {
       setError('Upload URL is not configured.');
       return;
     }
@@ -178,7 +180,7 @@ export const useFileUpload = ({
         formData.append(fieldName, file, file.name);
       }
 
-      const response = await fetch(uploadUrl, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
