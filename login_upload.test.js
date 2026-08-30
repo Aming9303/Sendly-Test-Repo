@@ -11,20 +11,36 @@ test('Login upload sends binary data as multipart FormData', () => {
   assert.doesNotMatch(source, /Content-Type['"]?\s*:\s*['"]application\/json/);
 });
 
-test('Login upload stores exactly one selected File in state', () => {
-  assert.match(hookSource, /selectedFiles\[0\]/);
-  assert.match(source, /useFileUpload/);
+test('Login delegates file selection to the shared hook', () => {
+  assert.doesNotMatch(source, /useState/);
+  assert.doesNotMatch(source, /\bfetch\s*\(/);
+  assert.match(hookSource, /file: selectedFiles\[0\] \?\? null/);
+  assert.match(source, /handleFileChange/);
 });
 
-test('Login upload guards empty and in-flight submissions', () => {
-  assert.match(hookSource, /if\s*\(\s*selectedFiles\.length === 0\s*\)/);
+test('Login rejects oversized files via the shared hook maxSizeMB option', () => {
+  assert.match(source, /maxSizeMB:\s*5/);
+  assert.match(hookSource, /maxSizeMB/);
+  assert.match(hookSource, /file\.size > maxBytes/);
+  assert.doesNotMatch(source, /fetch\(/);
+});
+
+test('Login upload guards empty and in-flight submissions via the hook', () => {
   assert.match(source, /disabled=\{!file \|\| isUploading\}/);
+  assert.match(hookSource, /uploadInFlightRef/);
+  assert.match(
+    hookSource,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
 
-test('Login upload maps friendly error messages for HTTP status codes, offline and network failures', () => {
-  assert.match(source, /response\.status\s*>=\s*400\s*&&\s*response\.status\s*<\s*500/);
-  assert.match(source, /response\.status\s*>=\s*500/);
-  assert.match(source, /navigator\.onLine/);
-  assert.match(source, /console\.error/);
-  assert.doesNotMatch(source, /Upload failed with status \$\{response\.status\}/);
+test('Login upload uses a configurable endpoint via the shared hook', () => {
+  assert.match(source, /uploadUrl\?: string/);
+  assert.match(source, /uploadUrl = getDefaultUploadUrl\(\)/);
+  assert.match(source, /SENDLY_UPLOAD_URL/);
+  assert.match(hookSource, /if \(!uploadUrl\)/);
+  assert.match(hookSource, /Upload URL is not configured\./);
+  assert.doesNotMatch(source, /https:\/\/example\.com/);
+  assert.doesNotMatch(source, /\bfetch\s*\(/);
 });

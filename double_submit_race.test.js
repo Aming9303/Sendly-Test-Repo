@@ -2,31 +2,23 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const test = require('node:test');
 
-const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
-
-test('Login.tsx wires uploadingRef into disabled while delegating to useFileUpload', () => {
-  const source = readFileSync('Login.tsx', 'utf8');
+test('useFileUpload.ts has a synchronous ref guard to prevent re-entry', () => {
+  const source = readFileSync('lib/useFileUpload.ts', 'utf8');
   assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
-  assert.match(source, /if\s*\(uploadInFlightRef\.current\)/);
-  assert.match(source, /uploadInFlightRef\.current\s*=\s*true/);
-  assert.match(source, /uploadInFlightRef\.current\s*=\s*false/);
-  assert.match(source, /disabled=\{!file\s*\|\|\s*isUploading\}/);
-});
-
-test('upload_file.tsx has a synchronous ref guard to prevent re-entry', () => {
-  const source = readFileSync('upload_file.tsx', 'utf8');
-  assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
-  assert.match(source, /if\s*\(uploadInFlightRef\.current\)/);
-  assert.match(source, /uploadInFlightRef\.current\s*=\s*true/);
-  assert.match(source, /uploadInFlightRef\.current\s*=\s*false/);
-  assert.match(source, /disabled=\{!file\s*\|\|\s*isUploading\}/);
+  assert.match(
+    source,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
 
 test('FileUpload.tsx delegates upload re-entry guard to useFileUpload', () => {
   const source = readFileSync('components/FileUpload.tsx', 'utf8');
   assert.match(source, /uploadInFlightRef\s*=\s*useRef\(false\)/);
-  assert.match(source, /if\s*\(uploadInFlightRef\.current\)/);
-  assert.match(source, /uploadInFlightRef\.current\s*=\s*true/);
-  assert.match(source, /uploadInFlightRef\.current\s*=\s*false/);
+  assert.match(
+    source,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
+  );
+  assert.match(source, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
   assert.match(source, /disabled=\{isUploading\}/);
 });

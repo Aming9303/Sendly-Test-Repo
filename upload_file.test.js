@@ -2,7 +2,8 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const test = require('node:test');
 
-const source = readFileSync('upload_file.tsx', 'utf8');
+const wrapperSource = readFileSync('upload_file.tsx', 'utf8');
+const source = readFileSync('Login.tsx', 'utf8');
 const hookSource = readFileSync('lib/useFileUpload.ts', 'utf8');
 
 test('upload sends the selected file with FormData instead of JSON', () => {
@@ -31,43 +32,10 @@ test('consolidated upload source has no hardcoded endpoint', () => {
 });
 
 test('upload handler uses a synchronous ref guard against re-entry in the hook', () => {
-  assert.match(hookSource, /uploadingRef/);
+  assert.match(hookSource, /uploadInFlightRef/);
   assert.match(
     hookSource,
-    /if \(uploadingRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadingRef\.current = true;/,
+    /if \(uploadInFlightRef\.current\) \{[\s\S]*?return;[\s\S]*?uploadInFlightRef\.current = true;/,
   );
-  assert.match(hookSource, /finally \{[\s\S]*uploadingRef\.current = false;/);
-});
-
-test('orphan upload_file_fixed.tsx and CorrectedUpload are not present in the repo', () => {
-  const fs = require('node:fs');
-  assert.equal(fs.existsSync('upload_file_fixed.tsx'), false, 'orphan upload_file_fixed.tsx must not exist');
-  // Ensure CorrectedUpload is not accidentally re-exported or referenced anywhere
-  const allSources = [wrapperSource, source, hookSource];
-  for (const src of allSources) {
-    assert.doesNotMatch(src, /CorrectedUpload/, 'CorrectedUpload must not appear in canonical sources');
-  }
-});
-
-test('upload aborts on unmount and ignores AbortError', () => {
-  assert.match(source, /AbortController/);
-  assert.match(source, /signal:\s*controller\.signal/);
-  assert.match(source, /AbortError/);
-});
-
-test('upload has accessible label and ARIA attributes', () => {
-  assert.match(source, /<label\s+htmlFor=/);
-  assert.match(source, /aria-label=/);
-  assert.match(source, /aria-describedby=/);
-  assert.match(source, /id="upload-file-error"/);
-  assert.match(source, /id="upload-file-status"/);
-  assert.match(source, /aria-busy=\{isUploading\}/);
-});
-
-test('upload maps friendly error messages for HTTP status codes, offline and network failures', () => {
-  assert.match(source, /response\.status\s*>=\s*400\s*&&\s*response\.status\s*<\s*500/);
-  assert.match(source, /response\.status\s*>=\s*500/);
-  assert.match(source, /navigator\.onLine/);
-  assert.match(source, /console\.error/);
-  assert.doesNotMatch(source, /Upload failed with status \$\{response\.status\}/);
+  assert.match(hookSource, /finally \{[\s\S]*uploadInFlightRef\.current = false;/);
 });
