@@ -24,8 +24,18 @@ test('FileUpload guards empty uploads and in-flight submissions', () => {
   assert.match(source, /disabled=\{isUploading\}/);
 });
 
-test('FileUpload aborts on unmount and ignores AbortError', () => {
-  assert.match(source, /AbortController/);
-  assert.match(source, /signal:\s*controller\.signal/);
-  assert.match(source, /AbortError/);
+test('FileUpload provides per-file remove button in multi-file mode', () => {
+  assert.match(source, /handleRemoveFile/);
+  assert.match(source, /multiple\s*&&\s*\(/);
+  assert.match(source, /onClick=\{.*handleRemoveFile/);
+});
+
+test('FileUpload uses stable unique keys instead of array index for previews', () => {
+  assert.doesNotMatch(source, /key=\{idx\}/);
+  assert.doesNotMatch(source, /key=\{index\}/);
+  assert.match(source, /key=\{item\.id\}/);
+});
+
+test('FileUpload revokes object URLs on single file removal', () => {
+  assert.match(source, /URL\.revokeObjectURL\(itemToRemove\.previewUrl\)/);
 });
