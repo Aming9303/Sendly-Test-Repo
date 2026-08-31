@@ -17,6 +17,15 @@ Webhook integration repo for GitHub agent bounty workflows (Sendly).
 
 ## Development
 
+Install the exact dependency versions recorded in `package-lock.json`:
+
+```bash
+npm ci
+```
+
+Use `npm install` only when adding or updating dependencies, and commit the
+resulting `package-lock.json` change together with the `package.json` change.
+
 ```bash
 npm test
 ```
